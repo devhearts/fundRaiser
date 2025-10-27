@@ -1,0 +1,158 @@
+import { Event } from "@shared/schema";
+import eventImage1 from '@assets/stock_images/community_charity_ev_97ad4e3e.jpg';
+import eventImage2 from '@assets/stock_images/medical_fundraising__0361a3be.jpg';
+import eventImage3 from '@assets/stock_images/environmental_conser_a6d5db4e.jpg';
+import eventImage4 from '@assets/stock_images/disaster_relief_emer_a62b03c5.jpg';
+
+// Shared mock events for personal celebrations
+export const MOCK_EVENTS: Event[] = [
+  {
+    id: '1',
+    title: 'Sarah & Michael\'s Dream Wedding 1',
+    description: 'Help us celebrate our love story! We\'re planning our perfect wedding day and would love your support to make it magical.',
+    goalAmount: 15000,
+    currentAmount: 9500,
+    coverImage: eventImage1,
+    location: 'Napa Valley, CA',
+    deadline: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
+    isPublic: true,
+    organizerName: 'Sarah & Michael',
+    organizerEmail: 'sarah.michael@example.com',
+    status: 'active',
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '2',
+    title: 'Emma\'s 30th Birthday Celebration',
+    description: 'Join us in celebrating Emma\'s milestone birthday! Help us throw an unforgettable party with friends and family.',
+    goalAmount: 5000,
+    currentAmount: 3200,
+    coverImage: eventImage2,
+    location: 'Brooklyn, NY',
+    deadline: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
+    isPublic: true,
+    organizerName: 'Emma\'s Friends',
+    organizerEmail: 'emma.birthday@example.com',
+    status: 'active',
+    createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '3',
+    title: 'David\'s Graduation Party',
+    description: 'Celebrate David\'s achievement of graduating with honors! Help us organize a memorable graduation party.',
+    goalAmount: 3000,
+    currentAmount: 3100,
+    coverImage: eventImage3,
+    location: 'Austin, TX',
+    deadline: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    isPublic: true,
+    organizerName: 'David\'s Family',
+    organizerEmail: 'david.graduation@example.com',
+    status: 'completed',
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '4',
+    title: 'Baby Shower for Jessica',
+    description: 'Help us celebrate the upcoming arrival of Jessica\'s little one! Join us for a beautiful baby shower celebration.',
+    goalAmount: 4000,
+    currentAmount: 2200,
+    coverImage: eventImage4,
+    location: 'Seattle, WA',
+    deadline: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000),
+    isPublic: true,
+    organizerName: 'Jessica\'s Sisters',
+    organizerEmail: 'jessica.baby@example.com',
+    status: 'active',
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '5',
+    title: 'Private Anniversary Celebration',
+    description: 'Help us celebrate our 10th wedding anniversary with a special trip! This is a private fundraiser for close family and friends.',
+    goalAmount: 8000,
+    currentAmount: 4500,
+    coverImage: eventImage1,
+    location: 'Tuscany, Italy',
+    deadline: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000),
+    isPublic: false,
+    organizerName: 'John & Lisa',
+    organizerEmail: 'john.lisa@example.com',
+    status: 'active',
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+  },
+];
+
+// Mock contributions for dashboard
+export const MOCK_CONTRIBUTIONS = [
+  {
+    id: '1',
+    eventTitle: 'Sarah & Michael\'s Dream Wedding 2',
+    donorName: 'Aunt Mary',
+    amount: 500,
+    status: 'completed',
+    isPledge: false,
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+  },
+  {
+    id: '2',
+    eventTitle: 'Emma\'s 30th Birthday Celebration',
+    donorName: 'Anonymous',
+    amount: 200,
+    status: 'completed',
+    isPledge: false,
+    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '3',
+    eventTitle: 'Sarah & Michael\'s Dream Wedding 3',
+    donorName: 'Best Friend Sarah',
+    amount: 1000,
+    status: 'pending',
+    isPledge: true,
+    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '4',
+    eventTitle: 'Baby Shower for Jessica',
+    donorName: 'Cousin Mike',
+    amount: 150,
+    status: 'completed',
+    isPledge: false,
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: '5',
+    eventTitle: 'Private Anniversary Celebration',
+    donorName: 'Family Friend',
+    amount: 300,
+    status: 'completed',
+    isPledge: false,
+    createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+  },
+];
+
+// Mock notifications for dashboard
+export const MOCK_NOTIFICATIONS = [
+  {
+    id: '1',
+    type: 'contribution',
+    message: 'New $500 contribution from Aunt Mary for Sarah & Michael\'s Dream Wedding',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    read: false,
+  },
+  {
+    id: '2',
+    type: 'milestone',
+    message: 'Sarah & Michael\'s Dream Wedding reached 60% of goal!',
+    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    read: true,
+  },
+  {
+    id: '3',
+    type: 'contribution',
+    message: 'New $150 contribution from Cousin Mike for Baby Shower for Jessica',
+    timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    read: false,
+  },
+];
