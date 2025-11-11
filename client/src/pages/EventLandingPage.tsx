@@ -21,6 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import { MOCK_EVENTS } from "@/data/mockData";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/config/api";
 
 export default function EventLandingPage() {
   const [, params] = useRoute("/event/:id");
@@ -32,8 +34,14 @@ export default function EventLandingPage() {
 
   const eventId = params?.id;
   const mockEvent = MOCK_EVENTS.find(e => e.id === eventId);
+  const { data: fetchedEvent, isLoading, isError } = useQuery({
+    queryKey: ["/api/events", eventId ?? ""],
+    queryFn: () => api.events.byId(eventId as string),
+    enabled: !!eventId,
+  });
+  const eventData: any = fetchedEvent ?? mockEvent;
 
-  if (!mockEvent) {
+  if (isError || (!isLoading && !eventData)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -44,10 +52,18 @@ export default function EventLandingPage() {
     );
   }
 
+  if (isLoading || !eventData) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">Loading event…</div>
+      </div>
+    );
+  }
+
   const mockContributions = [
     {
       id: '1',
-      eventId: mockEvent.id,
+      eventId: eventData.id,
       donorName: 'John Smith',
       donorEmail: 'john@example.com',
       amount: 100,
@@ -59,7 +75,7 @@ export default function EventLandingPage() {
     },
     {
       id: '2',
-      eventId: mockEvent.id,
+      eventId: eventData.id,
       donorName: 'Emily Chen',
       donorEmail: 'emily@example.com',
       amount: 250,
@@ -82,23 +98,16 @@ export default function EventLandingPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleContribution = (data: any) => {
-    toast({
-      title: "Thank you for your contribution!",
-      description: "Your support means the world to us.",
-    });
-  };
-
-  const daysRemaining = mockEvent.deadline 
-    ? Math.ceil((mockEvent.deadline.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+  const daysRemaining = eventData.deadline 
+    ? Math.ceil((new Date(eventData.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
   return (
     <div className="min-h-screen bg-background">
       <div className="relative h-[400px] overflow-hidden">
         <img
-          src={mockEvent.coverImage || "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800"}
-          alt={mockEvent.title}
+          src={eventData.coverImage || "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800"}
+          alt={eventData.title}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/20" />
@@ -117,18 +126,18 @@ export default function EventLandingPage() {
           <div className="container mx-auto">
             <div className="flex items-center gap-2 mb-4">
               <Badge className="bg-primary text-primary-foreground">Active Campaign</Badge>
-              {!mockEvent.isPublic && (
+              {eventData.isPublic === false && (
                 <Badge variant="outline" className="bg-background/80 backdrop-blur-sm border-blue/50 text-blue">
                   Private Event
                 </Badge>
               )}
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">{mockEvent.title}</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">{eventData.title}</h1>
             <div className="flex items-center gap-4 text-white/90">
-              {mockEvent.location && (
+              {eventData.location && (
                 <div className="flex items-center gap-1">
                   <MapPin className="h-4 w-4" />
-                  <span className="text-sm">{mockEvent.location}</span>
+                  <span className="text-sm">{eventData.location}</span>
                 </div>
               )}
               {daysRemaining && daysRemaining > 0 && (
@@ -164,14 +173,14 @@ export default function EventLandingPage() {
               <TabsContent value="details" className="space-y-8">
                 <div>
                   {isAuthenticated && (
-                    <ProgressBar current={mockEvent.currentAmount} goal={mockEvent.goalAmount} className="mb-8" />
+                    <ProgressBar current={eventData.currentAmount} goal={eventData.goalAmount} className="mb-8" />
                   )}
                   
                   <Card>
                     <CardContent className="p-6">
                       <h2 className="text-2xl font-semibold mb-4">About This Campaign</h2>
                       <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-line">
-                        {mockEvent.description}
+                        {eventData.description}
                       </div>
                     </CardContent>
                   </Card>
@@ -184,7 +193,7 @@ export default function EventLandingPage() {
                       <div className="text-center space-y-2">
                         <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">Map integration placeholder</p>
-                        <p className="text-sm font-medium">{mockEvent.location}</p>
+                        <p className="text-sm text-muted-foreground font-medium">{eventData.location}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -208,13 +217,13 @@ export default function EventLandingPage() {
                     <div className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
                         <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                          {mockEvent.organizerName.split(' ').map(n => n[0]).join('')}
+                          {eventData.organizerName.split(' ').map((n: string) => n[0]).join('')}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{mockEvent.organizerName}</p>
+                        <p className="font-medium">{eventData.organizerName}</p>
                         <p className="text-sm text-muted-foreground">
-                          Created {formatDistanceToNow(mockEvent.createdAt, { addSuffix: true })}
+                          Created {formatDistanceToNow(new Date(eventData.createdAt), { addSuffix: true })}
                         </p>
                       </div>
                     </div>
@@ -224,7 +233,7 @@ export default function EventLandingPage() {
 
               <TabsContent value="contributors" className="space-y-8">
                 {isAuthenticated && (
-                  <ProgressBar current={mockEvent.currentAmount} goal={mockEvent.goalAmount} className="mb-8" />
+                  <ProgressBar current={eventData.currentAmount} goal={eventData.goalAmount} className="mb-8" />
                 )}
                 
                 {isAuthenticated ? (
@@ -291,7 +300,7 @@ export default function EventLandingPage() {
           </div>
 
           <div>
-            <ContributionForm eventId={mockEvent.id} eventTitle={mockEvent.title} onSubmit={handleContribution} sticky />
+            <ContributionForm eventId={eventData.id} eventTitle={eventData.title} sticky />
           </div>
         </div>
       </div>

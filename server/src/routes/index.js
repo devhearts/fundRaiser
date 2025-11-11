@@ -9,6 +9,7 @@ const {
   updateEventSchema, 
   createContributionSchema, 
   updateContributionSchema,
+  createPledgeSchema,
   createEventUpdateSchema,
   updateEventUpdateSchema, 
   validate 
@@ -23,7 +24,7 @@ router.use('/', authRoutes);
 router.get('/events', auth, eventController.getAllEvents);
 router.get('/events/search', auth, eventController.searchEvents);
 router.get('/events/user/:userId', auth, eventController.getEventsByUser);
-router.get('/events/:id', auth, eventController.getEventById);
+router.get('/events/:id', eventController.getEventById); // Public endpoint - no authentication required
 router.post('/events', auth, validate(createEventSchema), eventController.createEvent);
 router.put('/events/:id', auth, validate(updateEventSchema), eventController.updateEvent);
 router.delete('/events/:id', auth, eventController.deleteEvent);
@@ -31,6 +32,7 @@ router.delete('/events/:id', auth, eventController.deleteEvent);
 // Contribution routes
 router.get('/events/:eventId/contributions', contributionController.getContributionsByEventId);
 router.post('/events/:eventId/contributions', validate(createContributionSchema), contributionController.createContribution);
+router.post('/events/:eventId/pledges', validate(createPledgeSchema), contributionController.createPledge); // Public endpoint - no authentication required
 router.put('/contributions/:id', validate(updateContributionSchema), contributionController.updateContribution);
 
 // Event Update routes

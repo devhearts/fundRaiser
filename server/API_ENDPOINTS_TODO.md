@@ -50,6 +50,7 @@ This document contains all the API endpoints that need to be implemented for the
 ### Contribution Management
 - [x] `GET /api/events/:eventId/contributions` - Get contributions for event *(Already implemented)*
 - [x] `POST /api/events/:eventId/contributions` - Create contribution *(Already implemented)*
+- [x] `POST /api/events/:eventId/pledges` - Create pledge *(Just implemented)*
 - [x] `PUT /api/contributions/:id` - Update contribution status *(Already implemented)*
 - [ ] `GET /api/contributions/:id` - Get specific contribution
 - [ ] `GET /api/users/:userId/contributions` - Get user's contributions
@@ -178,13 +179,13 @@ This document contains all the API endpoints that need to be implemented for the
 
 ### Overall Progress
 - **Total Endpoints**: 85
-- **Completed**: 11 (13%)
-- **Remaining**: 74 (87%)
+- **Completed**: 12 (14%)
+- **Remaining**: 73 (86%)
 
 ### By Category Progress
 - **Authentication & Users**: 9/15 (60%)
 - **Events**: 5/12 (42%)
-- **Contributions & Payments**: 3/15 (20%)
+- **Contributions & Payments**: 4/15 (27%)
 - **Payment Methods**: 0/6 (0%)
 - **Notifications**: 0/8 (0%)
 - **Security & Logging**: 0/5 (0%)

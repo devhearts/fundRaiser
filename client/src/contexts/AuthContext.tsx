@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { api } from "@/config/api";
+import { queryClient } from "@/lib/queryClient";
 
 interface User {
   id: string;
@@ -32,33 +34,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    //todo: remove mock functionality - replace with actual API call
-    console.log('Login attempt:', email);
-    const mockUser = {
-      id: '1',
-      name: email.split('@')[0],
-      email,
-    };
-    setUser(mockUser);
-    localStorage.setItem("user", JSON.stringify(mockUser));
+    const response = await api.auth.login({ email, password });
+    // Store token for future authenticated requests
+    if (response.token) {
+      localStorage.setItem("token", response.token);
+    }
+    setUser(response.user);
+    localStorage.setItem("user", JSON.stringify(response.user));
   };
 
   const signup = async (name: string, email: string, phone: string, password: string) => {
-    //todo: remove mock functionality - replace with actual API call
-    console.log('Signup attempt:', name, email, phone);
-    const mockUser = {
-      id: Math.random().toString(36).substring(7),
-      name,
-      email,
-      phone,
-    };
-    setUser(mockUser);
-    localStorage.setItem("user", JSON.stringify(mockUser));
+    const response = await api.auth.signup({ name, email, phone, password });
+    // Store token for future authenticated requests
+    if (response.token) {
+      localStorage.setItem("token", response.token);
+    }
+    setUser(response.user);
+    localStorage.setItem("user", JSON.stringify(response.user));
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
+    try {
+      // Best-effort invalidate server session
+      api.auth.logout().catch(() => {});
+    } finally {
+      // Clear all client auth data
+      setUser(null);
+      try {
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        sessionStorage.clear();
+      } catch {}
+
+      // Clear React Query cache
+      try {
+        queryClient.clear();
+      } catch {}
+
+      // Optional: force navigation to home to avoid stale protected views
+      try {
+        if (typeof window !== 'undefined') {
+          window.location.assign("/");
+        }
+      } catch {}
+    }
   };
 
   return (

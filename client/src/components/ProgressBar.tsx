@@ -20,7 +20,7 @@ export default function ProgressBar({ current, goal, className }: ProgressBarPro
     <div className={cn("w-full", className)}>
       <div className="flex justify-between items-center mb-2">
         <span className="text-sm font-medium text-foreground">
-          ${current.toLocaleString()} raised
+          UGX {current.toLocaleString()} raised
         </span>
         <span className="text-sm font-medium text-muted-foreground">
           {percentage.toFixed(0)}%
@@ -33,7 +33,7 @@ export default function ProgressBar({ current, goal, className }: ProgressBarPro
         />
       </div>
       <div className="mt-1 text-sm text-muted-foreground">
-        of ${goal.toLocaleString()} goal
+        of UGX {goal.toLocaleString()} goal
       </div>
     </div>
   );

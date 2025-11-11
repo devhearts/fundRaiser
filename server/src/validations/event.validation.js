@@ -40,6 +40,25 @@ const updateContributionSchema = z.object({
   status: z.string().min(1, 'Status is required')
 }).strict();
 
+// Pledge validation schema
+const createPledgeSchema = z.object({
+  donorName: z.string().min(1, 'Donor name is required').max(100, 'Donor name too long'),
+  donorEmail: z.union([z.string().email('Invalid email format'), z.literal('')]).optional(),
+  donorPhone: z.string()
+    .min(1, 'Phone number is required')
+    .regex(/^07\d{8}$/, 'Must be 10 digits starting with 07'),
+  amount: z.number().positive('Amount must be positive'),
+  isAnonymous: z.boolean().optional().default(false),
+  message: z.string().max(500, 'Message too long').nullable().optional(),
+  pledgeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format. Use YYYY-MM-DD').refine((date) => {
+    const pledgeDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return pledgeDate >= today;
+  }, 'Pledge date must be today or in the future'),
+  status: z.string().optional().default('pending')
+}).strict();
+
 // Event Update validation schemas
 const createEventUpdateSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters').max(200, 'Title too long'),
@@ -82,6 +101,7 @@ module.exports = {
   updateEventSchema,
   createContributionSchema,
   updateContributionSchema,
+  createPledgeSchema,
   createEventUpdateSchema,
   updateEventUpdateSchema,
   validate

@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { Heart, Plus, LogOut, User } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthDialog from "./AuthDialog";
+import { useUiStore } from "@/stores/uiStore";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,12 +18,15 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 export default function Navigation() {
   const [location] = useLocation();
   const { user, logout, isAuthenticated } = useAuth();
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [authDialogTab, setAuthDialogTab] = useState<"login" | "signup">("login");
+  const authDialogOpen = useUiStore((s) => s.authDialogOpen);
+  const authDialogTab = useUiStore((s) => s.authDialogTab);
+  const openAuthDialog = useUiStore((s) => s.openAuthDialog);
+  const setAuthDialogOpen = useUiStore((s) => s.setAuthDialogOpen);
+  const setAuthDialogTab = useUiStore((s) => s.setAuthDialogTab);
 
   const handleAuthClick = (tab: "login" | "signup") => {
     setAuthDialogTab(tab);
-    setAuthDialogOpen(true);
+    openAuthDialog(tab);
   };
 
   return (

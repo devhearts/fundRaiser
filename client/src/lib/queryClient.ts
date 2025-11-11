@@ -1,44 +1,40 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
+import { API_BASE_URL } from "@/config/env";
+import axiosInstance from "@/config/axios";
 
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
+  const response = await axiosInstance.request({
+    method: method as any,
+    url,
+    data,
   });
-
-  await throwIfResNotOk(res);
-  return res;
+  // Return a Response-like object for backward compatibility if needed
+  // But ideally, use axios directly instead
+  return response as unknown as Response;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
+  <T,>({ on401: unauthorizedBehavior }: { on401: UnauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    const path = queryKey.join("/") as string;
+    const url = path.startsWith("http") ? path : `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+    
+    try {
+      const response = await axiosInstance.get<T>(url);
+      return response.data;
+    } catch (error: any) {
+      if (unauthorizedBehavior === "returnNull" && error.response?.status === 401) {
+        return null as T;
+      }
+      throw error;
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({

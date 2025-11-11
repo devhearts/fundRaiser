@@ -83,8 +83,9 @@ export const MOCK_EVENTS: Event[] = [
   },
 ];
 
+export const MOCK_CONTRIBUTIONS = [];
 // Mock contributions for dashboard
-export const MOCK_CONTRIBUTIONS = [
+export const MOCK_CONTRIBUTIONS_WITH_EVENTS = [
   {
     id: '1',
     eventTitle: 'Sarah & Michael\'s Dream Wedding 2',

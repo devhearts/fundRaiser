@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { DollarSign } from "lucide-react";
+import { DollarSign, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import USSDModal from "./USSDModal";
+import { api } from "@/config/api";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContributionFormProps {
   eventId: string;
@@ -16,9 +18,10 @@ interface ContributionFormProps {
   sticky?: boolean;
 }
 
-const PRESET_AMOUNTS = [25, 50, 100, 250];
+const PRESET_AMOUNTS = [100000, 250000, 500000, 1000000];
 
 export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky = false }: ContributionFormProps) {
+  const { toast } = useToast();
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [donorName, setDonorName] = useState("");
@@ -29,16 +32,62 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
   const [isPledge, setIsPledge] = useState(false);
   const [pledgeDate, setPledgeDate] = useState("");
   const [showUSSDModal, setShowUSSDModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const amount = selectedAmount || parseInt(customAmount);
-    
-    // Show USSD modal for payment
-    setShowUSSDModal(true);
-    
-    // Also call the original onSubmit callback if provided
-    onSubmit?.({ eventId, amount, donorName, donorPhone, donorEmail, message, isAnonymous, isPledge, pledgeDate });
+
+    // If it's a pledge, create the pledge record
+    if (isPledge) {
+      setIsSubmitting(true);
+      try {
+        const pledgeData = {
+          donorName,
+          donorEmail: donorEmail || undefined,
+          donorPhone,
+          amount,
+          isAnonymous,
+          message: message || undefined,
+          pledgeDate,
+          status: 'pending'
+        };
+
+        const response = await api.events.createPledge(eventId, pledgeData);
+        
+        toast({
+          title: "Pledge created!",
+          description: "Thank you for your pledge. We'll remind you when it's time to fulfill it.",
+        });
+
+        // Reset form
+        setDonorName("");
+        setDonorPhone("");
+        setDonorEmail("");
+        setMessage("");
+        setIsAnonymous(false);
+        setIsPledge(false);
+        setPledgeDate("");
+        setSelectedAmount(null);
+        setCustomAmount("");
+
+        // Call onSubmit callback if provided
+        if (onSubmit) {
+          onSubmit(response);
+        }
+      } catch (error: any) {
+        toast({
+          title: "Failed to create pledge",
+          description: error.message || "Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Show USSD modal for payment
+      setShowUSSDModal(true);
+    }
   };
 
   const finalAmount = selectedAmount || (customAmount ? parseInt(customAmount) : 0);
@@ -65,7 +114,7 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
                   }}
                   data-testid={`button-amount-${amount}`}
                 >
-                  ${amount}
+                  UGX {amount.toLocaleString()}
                 </Button>
               ))}
             </div>
@@ -104,7 +153,9 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
                 type="tel"
                 value={donorPhone}
                 onChange={(e) => setDonorPhone(e.target.value)}
-                placeholder="07XX XXX XXX"
+                placeholder="0764123769"
+                pattern="^0\d{9}$"
+                maxLength={10}
                 required
                 data-testid="input-donor-phone"
               />
@@ -162,10 +213,19 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
           <Button
             type="submit"
             className="w-full h-12 text-base"
-            disabled={finalAmount <= 0 || !donorName || !donorPhone || (isPledge && !pledgeDate)}
+            disabled={finalAmount <= 0 || !donorName || !donorPhone || (isPledge && !pledgeDate) || isSubmitting}
             data-testid="button-contribute"
           >
-            {isPledge ? 'Make Pledge' : 'Contribute'} ${finalAmount.toLocaleString()}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isPledge ? 'Creating Pledge...' : 'Processing...'}
+              </>
+            ) : (
+              <>
+                {isPledge ? 'Make Pledge' : 'Contribute'} UGX {finalAmount.toLocaleString()}
+              </>
+            )}
           </Button>
         </form>
       </CardContent>

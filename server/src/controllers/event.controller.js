@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
 const sheetsService = require('../services/sheets.service');
+const logger = require('../utils/logger');
 
 // Get all events for logged-in user
 const getAllEvents = async (req, res) => {
@@ -16,20 +17,87 @@ const getAllEvents = async (req, res) => {
     const events = await db.getEvents();
     const userEvents = events.filter(event => event.organizerEmail === user.email);
 
-    res.json(userEvents);
+    // Calculate events stats for the user
+    const eventsStats = await calculateEventsStats(user.email);
+
+    res.json({
+      events: userEvents,
+      eventsStats: eventsStats
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch events' });
+  }
+};
+
+// Helper function to calculate events stats for a user
+const calculateEventsStats = async (userEmail) => {
+  try {
+    // Get all events created by the user
+    const allEvents = await db.getEvents();
+    const userEvents = allEvents.filter(event => event.organizerEmail === userEmail);
+    
+    // Get all contributions
+    const allContributions = await db.getContributions();
+    
+    // Get event IDs for user's events
+    const userEventIds = userEvents.map(event => event.id);
+    
+    // Filter contributions that belong to user's events
+    const userContributions = allContributions.filter(contribution => 
+      userEventIds.includes(contribution.eventId)
+    );
+    
+    // Calculate totalRaised (completed contributions for user's events)
+    const totalRaised = userContributions
+      .filter(c => c.status === 'completed')
+      .reduce((sum, c) => sum + (c.amount || 0), 0);
+    
+    // Calculate activeEvents (events where goalAmount > currentAmount and status is 'active')
+    const activeEvents = userEvents.filter(event => 
+      event.status === 'active' && 
+      (event.currentAmount || 0) < (event.goalAmount || 0)
+    ).length;
+    
+    // Calculate completedPledges (contributions with status='completed')
+    const completedPledges = userContributions.filter(c => c.status === 'completed').length;
+    
+    // Calculate pendingPledges (contributions with status='pending')
+    const pendingPledges = userContributions.filter(c => c.status === 'pending').length;
+    
+    return {
+      totalRaised,
+      activeEvents,
+      completedPledges,
+      pendingPledges
+    };
+  } catch (error) {
+    logger.error('Failed to calculate events stats:', error.message);
+    return {
+      totalRaised: 0,
+      activeEvents: 0,
+      completedPledges: 0,
+      pendingPledges: 0
+    };
   }
 };
 
 // Get specific event by ID
 const getEventById = async (req, res) => {
   try {
-    const event = await db.findEventById(req.params.id);
+    const eventId = req.params.id;
+    const event = await db.findEventById(eventId);
     if (!event) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    res.json(event);
+    
+    // Fetch contributions for this event
+    const contributions = await db.findContributionsByEventId(eventId);
+    
+    // Include contributions in the response
+    res.json({
+      ...event,
+      contributions: contributions || []
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch event' });
   }

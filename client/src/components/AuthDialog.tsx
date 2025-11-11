@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/form";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
 
 // Validation schemas
 const loginSchema = z.object({
@@ -51,6 +53,7 @@ interface AuthDialogProps {
 export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }: AuthDialogProps) {
   const { login, signup } = useAuth();
   const { toast } = useToast();
+  const [loginError, setLoginError] = useState<string | null>(null);
   
   // React Hook Form setup
   const loginForm = useForm<LoginFormData>({
@@ -74,6 +77,7 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
 
   const handleLogin = async (data: LoginFormData) => {
     try {
+      setLoginError(null);
       await login(data.email, data.password);
       toast({
         title: "Welcome back!",
@@ -82,11 +86,8 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
       onOpenChange(false);
       loginForm.reset();
     } catch (error) {
-      toast({
-        title: "Login failed",
-        description: "Please check your credentials and try again.",
-        variant: "destructive",
-      });
+      const message = (error as any)?.message || "Login failed. Please try again.";
+      setLoginError(message);
     }
   };
 
@@ -163,8 +164,25 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" data-testid="button-login-submit">
-                  Log In
+                {loginError && (
+                  <div className="text-sm text-destructive" data-testid="login-error">
+                    {loginError}
+                  </div>
+                )}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  data-testid="button-login-submit"
+                  disabled={loginForm.formState.isSubmitting}
+                >
+                  {loginForm.formState.isSubmitting ? (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Logging in...
+                    </span>
+                  ) : (
+                    "Log In"
+                  )}
                 </Button>
               </form>
             </Form>

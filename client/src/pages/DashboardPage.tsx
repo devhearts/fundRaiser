@@ -16,12 +16,23 @@ import ProgressBar from "@/components/ProgressBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { MOCK_EVENTS, MOCK_CONTRIBUTIONS, MOCK_NOTIFICATIONS } from "@/data/mockData";
+import { MOCK_CONTRIBUTIONS, MOCK_NOTIFICATIONS, MOCK_EVENTS } from "@/data/mockData";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/config/api";
+import NoContributions from "@/components/NoContributions";
+import NoNotifications from "@/components/NoNotifications";
+import NoEvents from "@/components/NoEvents";
 
 export default function DashboardPage() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  
+  // Fetch user's events
+  const { data: eventsResponse, isLoading: eventsLoading, isError: eventsError } = useQuery({
+    queryKey: ["/api/events"],
+    queryFn: () => api.events.list(),
+  });
   
   const handleViewEvent = (id: string) => {
     setLocation(`/event/${id}`);
@@ -48,10 +59,17 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, setLocation, toast]);
 
-  const totalRaised = MOCK_EVENTS.reduce((sum, event) => sum + event.currentAmount, 0);
-  const activeEvents = MOCK_EVENTS.filter(e => e.status === 'active').length;
-  const totalContributors = MOCK_CONTRIBUTIONS.length; // Count from contributions instead
-  const pendingPledges = MOCK_CONTRIBUTIONS.filter(c => c.isPledge && c.status === 'pending').length;
+  // Handle new response structure with eventsStats
+  const eventsData = eventsResponse as any;
+  const allEvents = eventsData?.events ?? (Array.isArray(eventsResponse) ? eventsResponse : MOCK_EVENTS);
+  const eventsStats = eventsData?.eventsStats ?? null;
+  
+  // Filter events by status
+  const activeEvents = (allEvents as any[]).filter((event: any) => event.status !== 'completed');
+  const completedEvents = (allEvents as any[]).filter((event: any) => event.status === 'completed');
+  
+  // Use stats from API if available, otherwise calculate from events
+  const contributions = (MOCK_CONTRIBUTIONS as unknown as any[]) ?? [];
 
   return (
     <div className="min-h-screen bg-background py-12">
@@ -68,7 +86,7 @@ export default function DashboardPage() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalRaised.toLocaleString()}</div>
+              <div className="text-2xl font-bold">UGX {eventsStats?.totalRaised?.toLocaleString() ?? 0}</div>
               <p className="text-xs text-muted-foreground">Across all events</p>
             </CardContent>
           </Card>
@@ -79,7 +97,7 @@ export default function DashboardPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeEvents}</div>
+              <div className="text-2xl font-bold">{eventsStats?.activeEvents ?? 0}</div>
               <p className="text-xs text-muted-foreground">Currently running</p>
             </CardContent>
           </Card>
@@ -90,7 +108,7 @@ export default function DashboardPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalContributors}</div>
+              <div className="text-2xl font-bold">{eventsStats?.completedPledges ?? 0}</div>
               <p className="text-xs text-muted-foreground">Total supporters</p>
             </CardContent>
           </Card>
@@ -101,7 +119,7 @@ export default function DashboardPage() {
               <Bell className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{pendingPledges}</div>
+              <div className="text-2xl font-bold">{eventsStats?.pendingPledges ?? 0}</div>
               <p className="text-xs text-muted-foreground">Needs follow-up</p>
             </CardContent>
           </Card>
@@ -109,9 +127,9 @@ export default function DashboardPage() {
 
         <Tabs defaultValue="events" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="events" data-testid="tab-events">My Events</TabsTrigger>
-            <TabsTrigger value="contributions" data-testid="tab-contributions">Contributions</TabsTrigger>
-            <TabsTrigger value="notifications" data-testid="tab-notifications">
+            <TabsTrigger value="events" data-testid="tab-events" className="min-w-[200px] px-8">My Active Events</TabsTrigger>
+            <TabsTrigger value="completed" data-testid="tab-completed" className="min-w-[200px] px-8">Completed Events</TabsTrigger>
+            <TabsTrigger value="notifications" data-testid="tab-notifications" className="min-w-[200px] px-8">
               Notifications
               {MOCK_NOTIFICATIONS.filter(n => !n.read).length > 0 && (
                 <Badge className="ml-2 bg-primary text-primary-foreground px-2 py-0">
@@ -122,7 +140,18 @@ export default function DashboardPage() {
           </TabsList>
 
           <TabsContent value="events" className="space-y-6">
-            {MOCK_EVENTS.map((event) => (
+            {eventsLoading && (
+              <Card>
+                <CardContent className="p-6 text-sm text-muted-foreground">Loading your events…</CardContent>
+              </Card>
+            )}
+            {eventsError && (
+              <Card>
+                <CardContent className="p-6 text-sm text-destructive">Failed to load events.</CardContent>
+              </Card>
+            )}
+            {!eventsLoading && !eventsError && activeEvents.length === 0 && <NoEvents />}
+            {!eventsLoading && !eventsError && activeEvents.length > 0 && activeEvents.map((event: any) => (
               <Card key={event.id}>
                 <CardContent className="p-6">
                   <div className="flex gap-6">
@@ -136,13 +165,15 @@ export default function DashboardPage() {
                         <div className="flex items-center justify-between mb-2 gap-2">
                           <h3 className="text-xl font-semibold">{event.title}</h3>
                           <div className="flex items-center gap-2">
-                            {!event.isPublic && (
+                            {event.isPublic === false && (
                               <Badge variant="outline" className="border-blue/50 text-blue">Private</Badge>
                             )}
-                            <Badge className="bg-primary text-primary-foreground">{event.status}</Badge>
+                            {event.status && (
+                              <Badge className="bg-primary text-primary-foreground">{event.status}</Badge>
+                            )}
                           </div>
                         </div>
-                        <ProgressBar current={event.currentAmount} goal={event.goalAmount} />
+                        <ProgressBar current={event.currentAmount ?? 0} goal={event.goalAmount ?? 0} />
                       </div>
                       <div className="flex gap-2">
                         <Button 
@@ -175,75 +206,152 @@ export default function DashboardPage() {
             ))}
           </TabsContent>
 
+          <TabsContent value="completed" className="space-y-6">
+            {eventsLoading && (
+              <Card>
+                <CardContent className="p-6 text-sm text-muted-foreground">Loading completed events…</CardContent>
+              </Card>
+            )}
+            {eventsError && (
+              <Card>
+                <CardContent className="p-6 text-sm text-destructive">Failed to load completed events.</CardContent>
+              </Card>
+            )}
+            {!eventsLoading && !eventsError && completedEvents.length === 0 && (
+              <Card>
+                <CardContent className="p-6 text-sm text-muted-foreground text-center">
+                  No completed events yet.
+                </CardContent>
+              </Card>
+            )}
+            {!eventsLoading && !eventsError && completedEvents.length > 0 && completedEvents.map((event: any) => (
+              <Card key={event.id}>
+                <CardContent className="p-6">
+                  <div className="flex gap-6">
+                    <img
+                      src={event.coverImage || "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800"}
+                      alt={event.title}
+                      className="w-32 h-32 object-cover rounded-lg"
+                    />
+                    <div className="flex-1 space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-2 gap-2">
+                          <h3 className="text-xl font-semibold">{event.title}</h3>
+                          <div className="flex items-center gap-2">
+                            {event.isPublic === false && (
+                              <Badge variant="outline" className="border-blue/50 text-blue">Private</Badge>
+                            )}
+                            {event.status && (
+                              <Badge className="bg-primary text-primary-foreground">{event.status}</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <ProgressBar current={event.currentAmount ?? 0} goal={event.goalAmount ?? 0} />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleViewEvent(event.id)}
+                          data-testid={`button-view-${event.id}`}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleShareEvent(event.id)}
+                          data-testid={`button-share-${event.id}`}
+                        >
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Share Link
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+
           <TabsContent value="contributions">
-            <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Event</TableHead>
-                    <TableHead>Donor</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {MOCK_CONTRIBUTIONS.map((contribution) => (
-                    <TableRow key={contribution.id} data-testid={`row-contribution-${contribution.id}`}>
-                      <TableCell className="font-medium">{contribution.eventTitle}</TableCell>
-                      <TableCell>{contribution.donorName}</TableCell>
-                      <TableCell className="font-semibold text-primary">
-                        ${contribution.amount.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={contribution.isPledge ? "outline" : "secondary"}>
-                          {contribution.isPledge ? 'Pledge' : 'Payment'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={contribution.status === 'completed' ? "default" : "outline"}>
-                          {contribution.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {contribution.createdAt.toLocaleDateString()}
-                      </TableCell>
+            {contributions.length === 0 ? (
+              <NoContributions />
+            ) : (
+              <Card>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Event</TableHead>
+                      <TableHead>Donor</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {contributions.map((contribution: any) => (
+                      <TableRow key={contribution.id} data-testid={`row-contribution-${contribution.id}`}>
+                        <TableCell className="font-medium">{contribution.eventTitle}</TableCell>
+                        <TableCell>{contribution.donorName}</TableCell>
+                        <TableCell className="font-semibold text-primary">
+                          UGX {contribution.amount.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={contribution.isPledge ? "outline" : "secondary"}>
+                            {contribution.isPledge ? 'Pledge' : 'Payment'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={contribution.status === 'completed' ? "default" : "outline"}>
+                            {contribution.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {contribution.createdAt.toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="notifications">
-            <Card>
-              <CardContent className="p-6 space-y-4">
-                {MOCK_NOTIFICATIONS.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-4 rounded-lg border ${
-                      notification.read ? 'bg-background' : 'bg-primary/5 border-primary/20'
-                    }`}
-                    data-testid={`notification-${notification.id}`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className={notification.read ? 'text-muted-foreground' : 'font-medium'}>
-                          {notification.message}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {notification.timestamp.toLocaleString()}
-                        </p>
+            {MOCK_NOTIFICATIONS.length === 0 ? (
+              <NoNotifications />
+            ) : (
+              <Card>
+                <CardContent className="p-6 space-y-4">
+                  {MOCK_NOTIFICATIONS.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 rounded-lg border ${
+                        notification.read ? 'bg-background' : 'bg-primary/5 border-primary/20'
+                      }`}
+                      data-testid={`notification-${notification.id}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className={notification.read ? 'text-muted-foreground' : 'font-medium'}>
+                            {notification.message}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {notification.timestamp.toLocaleString()}
+                          </p>
+                        </div>
+                        {!notification.read && (
+                          <Badge className="bg-primary text-primary-foreground">New</Badge>
+                        )}
                       </div>
-                      {!notification.read && (
-                        <Badge className="bg-primary text-primary-foreground">New</Badge>
-                      )}
                     </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>

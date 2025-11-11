@@ -45,11 +45,13 @@ const sheetsConfig = {
     'id',
     'eventId',
     'donorName',
-    'donorEmail', 
+    'donorEmail',
+    'donorPhone',
     'amount',
     'isAnonymous',
     'isPledge',
     'message',
+    'pledgeDate',
     'status',
     'createdAt'
   ],
@@ -468,9 +470,96 @@ const ensureSheetsExist = async (sheets) => {
     }
     
     console.log('✅ Google Sheets initialized successfully');
+    
+    // Update existing sheets with new headers if needed
+    await updateSheetHeaders(sheets);
   } catch (error) {
     console.error('❌ Failed to ensure sheets exist:', error.message);
     throw error;
+  }
+};
+
+// Update existing sheet headers to match current configuration
+const updateSheetHeaders = async (sheets) => {
+  try {
+    const spreadsheetId = sheetsConfig.spreadsheetId;
+    
+    // Get current headers and all data from the Contributions sheet
+    const contributionsResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetsConfig.sheets.contributions}!A:Z`,
+    });
+    
+    const allRows = contributionsResponse.data.values || [];
+    if (allRows.length === 0) {
+      // Sheet is empty, just update headers
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetsConfig.sheets.contributions}!A1`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: [sheetsConfig.contributionsHeaders]
+        }
+      });
+      return;
+    }
+    
+    const currentHeaders = allRows[0] || [];
+    const expectedHeaders = sheetsConfig.contributionsHeaders;
+    
+    // Check if headers need updating
+    if (currentHeaders.length !== expectedHeaders.length || 
+        !expectedHeaders.every((header, index) => currentHeaders[index] === header)) {
+      console.log('📝 Updating Contributions sheet headers and reorganizing data...');
+      
+      // Create a map of old header positions
+      const headerMap = new Map();
+      currentHeaders.forEach((header, index) => {
+        headerMap.set(header, index);
+      });
+      
+      // Reorganize data rows to match new header order
+      const reorganizedRows = [];
+      
+      // Add new header row
+      reorganizedRows.push(expectedHeaders);
+      
+      // Process each data row (skip header row)
+      for (let i = 1; i < allRows.length; i++) {
+        const oldRow = allRows[i];
+        const newRow = [];
+        
+        // For each expected header, get the value from the old row position
+        expectedHeaders.forEach((header) => {
+          const oldIndex = headerMap.get(header);
+          // If header existed in old sheet, use its value; otherwise use empty string
+          newRow.push(oldIndex !== undefined && oldIndex < oldRow.length ? oldRow[oldIndex] : '');
+        });
+        
+        reorganizedRows.push(newRow);
+      }
+      
+      // Clear the entire sheet and write new data
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId,
+        range: `${sheetsConfig.sheets.contributions}!A:Z`,
+      });
+      
+      // Write all rows (headers + data) back
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetsConfig.sheets.contributions}!A1`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: reorganizedRows
+        }
+      });
+      
+      console.log(`✅ Contributions sheet updated: ${reorganizedRows.length - 1} rows reorganized with new headers`);
+    }
+  } catch (error) {
+    // Don't fail initialization if header update fails (sheet might not exist yet)
+    console.warn('⚠️  Could not update sheet headers:', error.message);
   }
 };
 

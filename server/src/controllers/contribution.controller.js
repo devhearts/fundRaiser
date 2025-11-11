@@ -60,6 +60,52 @@ const createContribution = async (req, res) => {
   }
 };
 
+// Create new pledge
+const createPledge = async (req, res) => {
+  try {
+    const eventId = req.params.eventId;
+    const event = await db.findEventById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const {
+      donorName,
+      donorEmail,
+      donorPhone,
+      amount,
+      isAnonymous = false,
+      message,
+      pledgeDate,
+      status = 'pending'
+    } = req.body;
+
+    // Create contribution with isPledge: true
+    const newContribution = {
+      id: uuidv4(),
+      eventId,
+      donorName,
+      donorEmail: donorEmail || '',
+      donorPhone,
+      amount,
+      isAnonymous,
+      isPledge: true,
+      message,
+      pledgeDate: pledgeDate ? new Date(pledgeDate) : null,
+      status,
+      createdAt: new Date()
+    };
+
+    const createdContribution = await db.addContribution(newContribution);
+
+    // Don't update event's current amount for pledges (only when fulfilled later)
+    res.status(201).json(createdContribution);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create pledge' });
+  }
+};
+
 // Update contribution status
 const updateContribution = async (req, res) => {
   try {
@@ -95,5 +141,6 @@ const updateContribution = async (req, res) => {
 module.exports = {
   getContributionsByEventId,
   createContribution,
+  createPledge,
   updateContribution
 };
