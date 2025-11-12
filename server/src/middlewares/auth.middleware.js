@@ -69,6 +69,76 @@ const auth = async (req, res, next) => {
   }
 };
 
+const optionalAuth = async (req, res, next) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      req.user = undefined;
+      req.sessionId = undefined;
+      return next();
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, config.jwt.secret);
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        logger.debug('Optional auth: Expired token provided, continuing as unauthenticated');
+      } else if (error.name === 'JsonWebTokenError') {
+        logger.debug('Optional auth: Invalid token format provided, continuing as unauthenticated');
+      } else {
+        logger.debug(`Optional auth: Token verification failed (${error.name}), continuing as unauthenticated`);
+      }
+      req.user = undefined;
+      req.sessionId = undefined;
+      return next();
+    }
+
+    if (!decoded.isValid) {
+      logger.debug(`Optional auth: Invalid token used by user: ${decoded.email}`);
+      req.user = undefined;
+      req.sessionId = undefined;
+      return next();
+    }
+
+    const sessions = await sheetsService.getAllRows('UserSessions');
+    const activeSession = sessions.find(session => 
+      session.sessionToken === token && 
+      session.isActive === true &&
+      session.userId === decoded.id
+    );
+
+    if (!activeSession) {
+      logger.debug(`Optional auth: Inactive session token used by user: ${decoded.email}`);
+      req.user = undefined;
+      req.sessionId = undefined;
+      return next();
+    }
+
+    if (new Date(activeSession.expiresAt) < new Date()) {
+      logger.debug(`Optional auth: Expired session token used by user: ${decoded.email}`);
+
+      await sheetsService.updateUserSession(activeSession.id, {
+        isActive: false,
+        updatedAt: new Date().toISOString()
+      });
+      req.user = undefined;
+      req.sessionId = undefined;
+      return next();
+    }
+
+    req.user = decoded;
+    req.sessionId = activeSession.id;
+    next();
+  } catch (error) {
+    logger.debug('Optional auth middleware error:', error.message);
+    req.user = undefined;
+    req.sessionId = undefined;
+    next();
+  }
+};
+
 // Role-based authorization middleware
 const authorize = (...roles) => {
   return (req, res, next) => {
@@ -86,5 +156,6 @@ const authorize = (...roles) => {
 
 module.exports = {
   auth,
+  optionalAuth,
   authorize
 };

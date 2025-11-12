@@ -3,7 +3,7 @@ const eventController = require('../controllers/event.controller');
 const contributionController = require('../controllers/contribution.controller');
 const eventUpdateController = require('../controllers/event-update.controller');
 const authRoutes = require('./auth.routes');
-const { auth } = require('../middlewares/auth.middleware');
+const { auth, optionalAuth } = require('../middlewares/auth.middleware');
 const { 
   createEventSchema, 
   updateEventSchema, 
@@ -24,7 +24,7 @@ router.use('/', authRoutes);
 router.get('/events', auth, eventController.getAllEvents);
 router.get('/events/search', auth, eventController.searchEvents);
 router.get('/events/user/:userId', auth, eventController.getEventsByUser);
-router.get('/events/:id', eventController.getEventById); // Public endpoint - no authentication required
+router.get('/events/:id', optionalAuth, eventController.getEventById); // Public endpoint - optional authentication for enhanced data
 router.post('/events', auth, validate(createEventSchema), eventController.createEvent);
 router.put('/events/:id', auth, validate(updateEventSchema), eventController.updateEvent);
 router.delete('/events/:id', auth, eventController.deleteEvent);

@@ -92,13 +92,18 @@ const getEventById = async (req, res) => {
     
     // Fetch contributions for this event
     const contributions = await db.findContributionsByEventId(eventId);
-    
-    // Include contributions in the response
-    res.json({
-      ...event,
-      contributions: contributions || []
-    });
+    const isAuthenticated = !!req.user;
+    const response = {
+      ...event
+    };
+
+    if (isAuthenticated) {
+      response.contributions = contributions || [];
+    }
+
+    res.json(response);
   } catch (error) {
+    logger.error('Get event by ID error:', error.message);
     res.status(500).json({ error: 'Failed to fetch event' });
   }
 };
