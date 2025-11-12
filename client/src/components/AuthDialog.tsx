@@ -54,6 +54,7 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
   const { login, signup } = useAuth();
   const { toast } = useToast();
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [signupError, setSignupError] = useState<string | null>(null);
   
   // React Hook Form setup
   const loginForm = useForm<LoginFormData>({
@@ -93,6 +94,7 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
 
   const handleSignup = async (data: SignupFormData) => {
     try {
+      setSignupError(null);
       await signup(data.name, data.email, data.phone, data.password);
       toast({
         title: "Account created!",
@@ -101,11 +103,8 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
       onOpenChange(false);
       signupForm.reset();
     } catch (error) {
-      toast({
-        title: "Signup failed",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
+      const message = (error as any)?.message || "Signup failed. Please try again.";
+      setSignupError(message);
     }
   };
 
@@ -280,8 +279,25 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" data-testid="button-signup-submit">
-                  Create Account
+                {signupError && (
+                  <div className="text-sm text-destructive" data-testid="signup-error">
+                    {signupError}
+                  </div>
+                )}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  data-testid="button-signup-submit"
+                  disabled={signupForm.formState.isSubmitting}
+                >
+                  {signupForm.formState.isSubmitting ? (
+                    <span className="inline-flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Creating account...
+                    </span>
+                  ) : (
+                    "Create Account"
+                  )}
                 </Button>
               </form>
             </Form>
