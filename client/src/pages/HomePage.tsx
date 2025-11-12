@@ -13,10 +13,9 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
-  //todo: remove mock functionality - filter to show only public events
+
   const publicEvents = MOCK_EVENTS.filter(event => event.isPublic);
-  
+
   const filteredEvents = publicEvents.filter(event =>
     event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     event.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -37,7 +36,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section - Full Height */}
       <section className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-primary/5">
         <div className="container mx-auto px-4">
           <div className="max-w-5xl mx-auto text-center space-y-12">
@@ -75,7 +73,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Impact Statistics */}
       <section className="py-20 bg-gradient-to-r from-primary/5 to-background">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center space-y-12">
@@ -85,7 +82,7 @@ export default function HomePage() {
                 See how families and friends are making special moments unforgettable
               </p>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               <div className="text-center space-y-2">
                 <div className="text-3xl md:text-4xl font-bold text-primary">25,000+</div>
@@ -108,7 +105,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Featured Events */}
       {false && <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-6xl mx-auto space-y-12">
@@ -118,7 +114,7 @@ export default function HomePage() {
                 Discover beautiful events and celebrations happening now
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredEvents.slice(0, 3).map((event) => (
                 <EventCard
@@ -129,7 +125,7 @@ export default function HomePage() {
                 />
               ))}
             </div>
-            
+
             <div className="text-center">
               <Button variant="outline" size="lg" className="px-8">
                 View All Events
@@ -140,7 +136,6 @@ export default function HomePage() {
         </div>
       </section>}
 
-      {/* Call to Action */}
       {false && <section className="py-20 bg-gradient-to-r from-primary/10 to-primary/5">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center space-y-8">
@@ -151,7 +146,7 @@ export default function HomePage() {
                 we're here to help make every moment unforgettable.
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="h-14 px-8 text-lg">
                 <Plus className="w-5 h-5 mr-2" />
@@ -165,7 +160,6 @@ export default function HomePage() {
         </div>
       </section>}
 
-      {/* Testimonials */}
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto space-y-12">
@@ -175,7 +169,7 @@ export default function HomePage() {
                 Real stories from couples and families celebrating their special moments
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <Card className="p-6">
                 <CardContent className="p-0 space-y-4">
@@ -191,7 +185,7 @@ export default function HomePage() {
                   <div className="text-sm font-medium">Sarah & Michael</div>
                 </CardContent>
               </Card>
-              
+
               <Card className="p-6">
                 <CardContent className="p-0 space-y-4">
                   <div className="flex items-center gap-1">
@@ -206,7 +200,7 @@ export default function HomePage() {
                   <div className="text-sm font-medium">Jennifer R.</div>
                 </CardContent>
               </Card>
-              
+
               <Card className="p-6">
                 <CardContent className="p-0 space-y-4">
                   <div className="flex items-center gap-1">

@@ -31,7 +31,6 @@ export default function EventLandingPage() {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("details");
 
-
   const eventId = params?.id;
   const mockEvent = MOCK_EVENTS.find(e => e.id === eventId);
   const { data: fetchedEvent, isLoading, isError } = useQuery({
@@ -60,41 +59,17 @@ export default function EventLandingPage() {
     );
   }
 
-  const mockContributions = [
-    {
-      id: '1',
-      eventId: eventData.id,
-      donorName: 'John Smith',
-      donorEmail: 'john@example.com',
-      amount: 100,
-      isAnonymous: false,
-      isPledge: false,
-      message: 'Happy to support this wonderful cause!',
-      status: 'completed',
-      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    },
-    {
-      id: '2',
-      eventId: eventData.id,
-      donorName: 'Emily Chen',
-      donorEmail: 'emily@example.com',
-      amount: 250,
-      isAnonymous: false,
-      isPledge: false,
-      message: 'A happy marriage is a blessing!',
-      status: 'completed',
-      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    },
-  ];
+  const contributions = isAuthenticated && fetchedEvent?.contributions 
+    ? (fetchedEvent.contributions as any[]).map((contribution: any) => ({
+        ...contribution,
+        createdAt: contribution.createdAt ? new Date(contribution.createdAt) : new Date(),
+      }))
+    : [];
 
   const handleShare = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
     setCopied(true);
-    toast({
-      title: "Link copied!",
-      description: "Share this link with potential contributors",
-    });
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -162,9 +137,9 @@ export default function EventLandingPage() {
                 <TabsTrigger value="contributors" data-testid="tab-contributors">
                   <Users className="h-4 w-4 mr-2" />
                   Contributors
-                  {isAuthenticated && mockContributions.length > 0 && (
+                  {isAuthenticated && contributions.length > 0 && (
                     <Badge className="ml-2 bg-primary text-primary-foreground px-2 py-0">
-                      {mockContributions.length}
+                      {contributions.length}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -175,7 +150,7 @@ export default function EventLandingPage() {
                   {isAuthenticated && (
                     <ProgressBar current={eventData.currentAmount} goal={eventData.goalAmount} className="mb-8" />
                   )}
-                  
+
                   <Card>
                     <CardContent className="p-6">
                       <h2 className="text-2xl font-semibold mb-4">About This Campaign</h2>
@@ -206,7 +181,7 @@ export default function EventLandingPage() {
                       <p className="text-muted-foreground mb-6">
                         Thank you to all the wonderful people who have contributed to this event!
                       </p>
-                      <ContributionList contributions={mockContributions} />
+                      <ContributionList contributions={contributions} />
                     </CardContent>
                   </Card>
                 )}
@@ -235,7 +210,7 @@ export default function EventLandingPage() {
                 {isAuthenticated && (
                   <ProgressBar current={eventData.currentAmount} goal={eventData.goalAmount} className="mb-8" />
                 )}
-                
+
                 {isAuthenticated ? (
                   <Card>
                     <CardContent className="p-6">
@@ -248,36 +223,40 @@ export default function EventLandingPage() {
                             <TableHead>Type</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Date</TableHead>
-                            {/* <TableHead>Message</TableHead> */}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {mockContributions.map((contribution) => (
-                            <TableRow key={contribution.id} data-testid={`row-contribution-${contribution.id}`}>
-                              <TableCell className="font-medium">
-                                {contribution.isAnonymous ? 'Anonymous' : contribution.donorName}
+                          {contributions.length > 0 ? (
+                            contributions.map((contribution) => (
+                              <TableRow key={contribution.id} data-testid={`row-contribution-${contribution.id}`}>
+                                <TableCell className="font-medium">
+                                  {contribution.isAnonymous ? 'Anonymous' : contribution.donorName}
+                                </TableCell>
+                                <TableCell className="font-semibold text-primary">
+                                  UGX {contribution.amount.toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={contribution.isPledge ? "outline" : "secondary"}>
+                                    {contribution.isPledge ? 'Pledge' : 'Payment'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={contribution.status === 'completed' ? "default" : "outline"}>
+                                    {contribution.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-sm text-muted-foreground">
+                                  {contribution.createdAt.toLocaleDateString()}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                No contributions yet. Be the first to contribute!
                               </TableCell>
-                              <TableCell className="font-semibold text-primary">
-                                ${contribution.amount.toLocaleString()}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={contribution.isPledge ? "outline" : "secondary"}>
-                                  {contribution.isPledge ? 'Pledge' : 'Payment'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={contribution.status === 'completed' ? "default" : "outline"}>
-                                  {contribution.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">
-                                {contribution.createdAt.toLocaleDateString()}
-                              </TableCell>
-                              {/* <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
-                                {contribution.message || '-'}
-                              </TableCell> */}
                             </TableRow>
-                          ))}
+                          )}
                         </TableBody>
                       </Table>
                     </CardContent>
