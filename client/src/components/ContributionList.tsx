@@ -20,7 +20,7 @@ export default function ContributionList({ contributions }: ContributionListProp
             No contributions yet. Be the first to support this cause!
           </p>
         ) : (
-          contributions.map((contribution) => {
+          contributions.slice(-3).map((contribution) => {
             const displayName = contribution.isAnonymous ? "Anonymous" : contribution.donorName;
             const initials = displayName
               .split(" ")
@@ -38,7 +38,7 @@ export default function ContributionList({ contributions }: ContributionListProp
                   <div className="flex items-baseline justify-between gap-2">
                     <p className="font-medium text-sm truncate">{displayName}</p>
                     <p className="font-semibold text-primary text-sm whitespace-nowrap">
-                      ${contribution.amount.toLocaleString()}
+                      UGX {contribution.amount.toLocaleString()}
                     </p>
                   </div>
                   <p className="text-xs text-muted-foreground">

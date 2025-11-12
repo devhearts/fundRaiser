@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, TrendingUp, Users, Bell, Share2, Eye } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Bell, Share2, Eye, Check } from "lucide-react";
 import ProgressBar from "@/components/ProgressBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
@@ -27,8 +27,8 @@ export default function DashboardPage() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   
-  // Fetch user's events
   const { data: eventsResponse, isLoading: eventsLoading, isError: eventsError } = useQuery({
     queryKey: ["/api/events"],
     queryFn: () => api.events.list(),
@@ -41,13 +41,10 @@ export default function DashboardPage() {
   const handleShareEvent = (id: string) => {
     const url = `${window.location.origin}/event/${id}`;
     navigator.clipboard.writeText(url);
-    toast({
-      title: "Link copied!",
-      description: "Share this link with potential contributors",
-    });
+    setCopiedEventId(id);
+    setTimeout(() => setCopiedEventId(null), 2000);
   };
 
-  //todo: remove mock functionality - replace with proper auth protection
   useEffect(() => {
     if (!isAuthenticated) {
       toast({
@@ -59,16 +56,13 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, setLocation, toast]);
 
-  // Handle new response structure with eventsStats
   const eventsData = eventsResponse as any;
   const allEvents = eventsData?.events ?? (Array.isArray(eventsResponse) ? eventsResponse : MOCK_EVENTS);
   const eventsStats = eventsData?.eventsStats ?? null;
   
-  // Filter events by status
   const activeEvents = (allEvents as any[]).filter((event: any) => event.status !== 'completed');
   const completedEvents = (allEvents as any[]).filter((event: any) => event.status === 'completed');
   
-  // Use stats from API if available, otherwise calculate from events
   const contributions = (MOCK_CONTRIBUTIONS as unknown as any[]) ?? [];
 
   return (
@@ -191,8 +185,17 @@ export default function DashboardPage() {
                           onClick={() => handleShareEvent(event.id)}
                           data-testid={`button-share-${event.id}`}
                         >
-                          <Share2 className="h-4 w-4 mr-2" />
-                          Share Link
+                          {copiedEventId === event.id ? (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="h-4 w-4 mr-2" />
+                              Share Link
+                            </>
+                          )}
                         </Button>
                         <Button variant="outline" size="sm" data-testid={`button-notify-${event.id}`}>
                           <Bell className="h-4 w-4 mr-2" />
@@ -264,8 +267,17 @@ export default function DashboardPage() {
                           onClick={() => handleShareEvent(event.id)}
                           data-testid={`button-share-${event.id}`}
                         >
-                          <Share2 className="h-4 w-4 mr-2" />
-                          Share Link
+                          {copiedEventId === event.id ? (
+                            <>
+                              <Check className="h-4 w-4 mr-2" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Share2 className="h-4 w-4 mr-2" />
+                              Share Link
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>

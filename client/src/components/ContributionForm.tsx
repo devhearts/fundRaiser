@@ -38,7 +38,6 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
     e.preventDefault();
     const amount = selectedAmount || parseInt(customAmount);
 
-    // If it's a pledge, create the pledge record
     if (isPledge) {
       setIsSubmitting(true);
       try {
@@ -60,7 +59,6 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
           description: "Thank you for your pledge. We'll remind you when it's time to fulfill it.",
         });
 
-        // Reset form
         setDonorName("");
         setDonorPhone("");
         setDonorEmail("");
@@ -71,7 +69,6 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
         setSelectedAmount(null);
         setCustomAmount("");
 
-        // Call onSubmit callback if provided
         if (onSubmit) {
           onSubmit(response);
         }
@@ -85,7 +82,6 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
         setIsSubmitting(false);
       }
     } else {
-      // Show USSD modal for payment
       setShowUSSDModal(true);
     }
   };
@@ -122,7 +118,7 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
               <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 type="number"
-                placeholder="Custom amount"
+                placeholder="Custom amount (UGX)"
                 value={customAmount}
                 onChange={(e) => {
                   setCustomAmount(e.target.value);
@@ -230,7 +226,6 @@ export default function ContributionForm({ eventId, eventTitle, onSubmit, sticky
         </form>
       </CardContent>
       
-      {/* USSD Payment Modal */}
       <USSDModal
         isOpen={showUSSDModal}
         onClose={() => setShowUSSDModal(false)}
