@@ -56,7 +56,7 @@ class GoogleSheetsService {
           let value = row[index] || '';
           
           // Convert string values back to appropriate types
-          if (header === 'goalAmount' || header === 'currentAmount' || header === 'amount') {
+          if (header === 'goalAmount' || header === 'amount') {
             value = parseFloat(value) || 0;
           } else if (header === 'isPublic' || header === 'isAnonymous' || header === 'isPledge' || 
                      header === 'isVerified' || header === 'isActive' || header === 'isDefault') {
@@ -64,8 +64,15 @@ class GoogleSheetsService {
           } else if (header === 'deadline' || header === 'createdAt' || header === 'updatedAt' || 
                      header === 'lastLogin' || header === 'expiresAt' || header === 'pledgeDate' || 
                      header === 'fulfillmentDate' || header === 'sentAt' || header === 'readAt' ||
-                     header === 'processedAt' || header === 'lastReminderDate') {
+                     header === 'processedAt' || header === 'lastReminderDate' || header === 'deletedAt') {
             value = value ? new Date(value) : null;
+          } else if (header === 'fulfilledContributions' || header === 'metadata') {
+            // Parse JSON strings
+            try {
+              value = value ? JSON.parse(value) : [];
+            } catch (e) {
+              value = [];
+            }
           }
           
           obj[header] = value;
@@ -109,9 +116,6 @@ class GoogleSheetsService {
         case sheetsConfig.sheets.payments:
           headers = sheetsConfig.paymentsHeaders;
           break;
-        case sheetsConfig.sheets.pledges:
-          headers = sheetsConfig.pledgesHeaders;
-          break;
         case sheetsConfig.sheets.notifications:
           headers = sheetsConfig.notificationsHeaders;
           break;
@@ -141,6 +145,9 @@ class GoogleSheetsService {
           value = value ? 'TRUE' : 'FALSE';
         } else if (value instanceof Date) {
           value = value.toISOString();
+        } else if (Array.isArray(value) || (typeof value === 'object' && value !== null)) {
+          // Stringify JSON objects/arrays
+          value = JSON.stringify(value);
         } else if (value === null || value === undefined) {
           value = '';
         }
@@ -294,6 +301,11 @@ class GoogleSheetsService {
     return contributions.filter(contribution => contribution.eventId === eventId);
   }
 
+  async getContributionsByPhoneAndEvent(phone, eventId) {
+    const contributions = await this.getContributionsByEventId(eventId);
+    return contributions.filter(contribution => contribution.donorPhone === phone);
+  }
+
   async createContribution(contributionData) {
     return await this.addRow(sheetsConfig.sheets.contributions, contributionData);
   }
@@ -391,6 +403,72 @@ class GoogleSheetsService {
 
   async deleteEventUpdate(id) {
     return await this.deleteRow(sheetsConfig.sheets.eventUpdates, id);
+  }
+
+  // Payment-specific methods
+  async getAllPayments(includeDeleted = false) {
+    const payments = await this.getAllRows(sheetsConfig.sheets.payments);
+    if (includeDeleted) {
+      return payments;
+    }
+    // Filter out soft-deleted payments
+    return payments.filter(payment => !payment.deletedAt);
+  }
+
+  async getPaymentById(id, includeDeleted = false) {
+    const payments = await this.getAllPayments(includeDeleted);
+    return payments.find(payment => payment.id === id);
+  }
+
+  async getPaymentsByContributionId(contributionId, includeDeleted = false) {
+    const payments = await this.getAllPayments(includeDeleted);
+    return payments.filter(payment => payment.contributionId === contributionId);
+  }
+
+  async getPaymentsByPhoneAndEvent(phone, eventId, includeDeleted = false) {
+    const payments = await this.getAllPayments(includeDeleted);
+    // Get all contributions for this event to filter payments
+    const contributions = await this.getContributionsByEventId(eventId);
+    const contributionIds = new Set(contributions.map(c => c.id));
+    
+    // Filter payments by phone, status, and contributionId matching event
+    return payments.filter(payment => 
+      payment.payerPhone === phone && 
+      contributionIds.has(payment.contributionId) &&
+      payment.status === 'completed'
+    );
+  }
+
+  async createPayment(paymentData) {
+    return await this.addRow(sheetsConfig.sheets.payments, paymentData);
+  }
+
+  async updatePayment(id, updates) {
+    return await this.updateRow(sheetsConfig.sheets.payments, id, updates);
+  }
+
+  // Soft delete payment - sets deletedAt timestamp instead of removing the row
+  async deletePayment(id) {
+    try {
+      const payment = await this.getPaymentById(id, true); // Include deleted to check if exists
+      if (!payment) {
+        throw new Error('Payment not found');
+      }
+
+      // If already soft-deleted, return
+      if (payment.deletedAt) {
+        logger.info(`Payment ${id} is already deleted`);
+        return payment;
+      }
+
+      // Soft delete by setting deletedAt timestamp
+      return await this.updatePayment(id, {
+        deletedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      logger.error(`Failed to soft delete payment:`, error.message);
+      throw error;
+    }
   }
 }
 

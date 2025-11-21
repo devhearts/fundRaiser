@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Smartphone, Copy, Check, ExternalLink, CreditCard } from "lucide-react";
+import { Smartphone, Copy, Check, ExternalLink, CreditCard, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/config/api";
 
 interface USSDModalProps {
   isOpen: boolean;
@@ -13,11 +14,29 @@ interface USSDModalProps {
   amount: number;
   phoneNumber: string;
   eventTitle: string;
+  eventId?: string;
+  contributionId?: string;
+  payerName: string;
+  payerEmail?: string;
+  onPaymentSuccess?: () => void;
 }
 
-export default function USSDModal({ isOpen, onClose, amount, phoneNumber, eventTitle }: USSDModalProps) {
+export default function USSDModal({
+  isOpen,
+  onClose,
+  amount,
+  phoneNumber,
+  eventTitle,
+  eventId,
+  contributionId,
+  payerName,
+  payerEmail,
+  onPaymentSuccess,
+}: USSDModalProps) {
   const { toast } = useToast();
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProvider, setProcessingProvider] = useState<string | null>(null);
 
   // Generate USSD codes for MTN and Airtel
   const generateUSSDCode = (provider: 'MTN' | 'Airtel', phone: string, amount: number) => {
@@ -61,6 +80,40 @@ export default function USSDModal({ isOpen, onClose, amount, phoneNumber, eventT
     window.open(`tel:${code}`, '_self');
   };
 
+  const mockPayment = async (paymentProvider: string, paymentMethod: "mobile_money" | "card") => {
+    setIsProcessing(true);
+    setProcessingProvider(paymentProvider);
+    try {
+      await api.payments.process({
+        ...(contributionId ? { contributionId } : { eventId: eventId! }),
+        amount,
+        paymentMethod,
+        paymentProvider,
+        payerName,
+        payerEmail,
+        payerPhone: phoneNumber,
+        metadata: {
+          source: paymentMethod === "card" ? "card_portal" : "ussd",
+        },
+      });
+      toast({
+        title: "Payment recorded",
+        description: "Payment was marked as successful for testing purposes.",
+      });
+      onPaymentSuccess?.();
+      onClose();
+    } catch (error: any) {
+      toast({
+        title: "Failed to record payment",
+        description: error.message || "Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+      setProcessingProvider(null);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
@@ -70,7 +123,7 @@ export default function USSDModal({ isOpen, onClose, amount, phoneNumber, eventT
             Complete Payment
           </DialogTitle>
           <DialogDescription>
-            Choose your preferred payment method to complete your contribution of <strong>${amount.toLocaleString()}</strong> for <strong>{eventTitle}</strong>.
+            Choose your preferred payment method to complete your contribution of <strong>UGX {amount.toLocaleString()}</strong> for <strong>{eventTitle}</strong>.
           </DialogDescription>
         </DialogHeader>
 
@@ -78,7 +131,7 @@ export default function USSDModal({ isOpen, onClose, amount, phoneNumber, eventT
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="mtn" className="flex items-center gap-2">
               <Badge className="bg-yellow-500 text-white text-xs">MTN</Badge>
-              MTN Mobile Money
+              MTN Mobile Money 
             </TabsTrigger>
             <TabsTrigger value="airtel" className="flex items-center gap-2">
               <Badge className="bg-red-500 text-white text-xs">Airtel</Badge>
@@ -144,6 +197,20 @@ export default function USSDModal({ isOpen, onClose, amount, phoneNumber, eventT
                 <li>You'll receive a confirmation SMS</li>
               </ol>
             </div>
+            <Button
+              className="w-full"
+              disabled={isProcessing}
+              onClick={() => mockPayment("MTN", "mobile_money")}
+            >
+              {isProcessing && processingProvider === "MTN" ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Recording MTN payment...
+                </>
+              ) : (
+                "Mark MTN payment as completed"
+              )}
+            </Button>
           </TabsContent>
 
           {/* Airtel Tab */}
@@ -200,6 +267,20 @@ export default function USSDModal({ isOpen, onClose, amount, phoneNumber, eventT
                 <li>You'll receive a confirmation SMS</li>
               </ol>
             </div>
+            <Button
+              className="w-full"
+              disabled={isProcessing}
+              onClick={() => mockPayment("Airtel", "mobile_money")}
+            >
+              {isProcessing && processingProvider === "Airtel" ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Recording Airtel payment...
+                </>
+              ) : (
+                "Mark Airtel payment as completed"
+              )}
+            </Button>
           </TabsContent>
 
           {/* Card Payment Tab */}
@@ -222,7 +303,7 @@ export default function USSDModal({ isOpen, onClose, amount, phoneNumber, eventT
                     </p>
                     <div className="bg-white p-3 rounded border">
                       <p className="text-sm text-gray-600 mb-1">Amount to pay:</p>
-                      <p className="text-xl font-bold text-green-600">${amount.toLocaleString()}</p>
+                      <p className="text-xl font-bold text-green-600">UGX {amount.toLocaleString()}</p>
                     </div>
                   </div>
                   
@@ -230,15 +311,20 @@ export default function USSDModal({ isOpen, onClose, amount, phoneNumber, eventT
                     <Button
                       size="lg"
                       className="w-full"
-                      onClick={() => {
-                        toast({
-                          title: "Card Payment",
-                          description: "Card payment integration will be available soon. Please use mobile money for now.",
-                        });
-                      }}
+                      disabled={isProcessing}
+                      onClick={() => mockPayment("card", "card")}
                     >
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Pay with Card
+                      {isProcessing && processingProvider === "card" ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Recording card payment...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Pay with Card
+                        </>
+                      )}
                     </Button>
                     
                     <p className="text-xs text-gray-500 text-center">

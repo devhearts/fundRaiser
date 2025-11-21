@@ -27,7 +27,7 @@ All event CRUD endpoints (including search, user filtering, and event updates) a
     "title": "Event Title",
     "description": "Event Description",
     "goalAmount": 10000,
-    "currentAmount": 0,
+    "currentAmount": 0, // Computed from payments
     ...
   }
   ```
@@ -53,10 +53,11 @@ All event CRUD endpoints (including search, user filtering, and event updates) a
   - Returns 409 Conflict if duplicate found with message: "You already have an event with this title. Please choose a different title."
 - **Auto-generated fields**:
   - `id`: UUID v4
-  - `currentAmount`: 0
   - `organizerName`: from authenticated user's name
   - `organizerEmail`: from authenticated user's email
   - `createdAt`: current timestamp
+- **Derived fields (response only)**:
+  - `currentAmount`: computed from completed payments (defaults to 0 for new events)
 - **Note**: Organizer information is automatically retrieved from the authenticated user - not sent in request body
 - **Response**: 201 Created with the new event, or 409 Conflict if duplicate title exists
 

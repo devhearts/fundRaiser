@@ -1,5 +1,6 @@
 import { endpoints } from "./endpoints";
 import axiosInstance from "./axios";
+import { Contribution } from "@shared/schema";
 
 // Generic request function using axios
 export async function request<T>(
@@ -47,6 +48,27 @@ export const api = {
       request<void>("POST", endpoints.events.contribute(id), payload),
     createPledge: (id: string, payload: Record<string, unknown>) =>
       request<{ id: string }>("POST", endpoints.events.createPledge(id), payload),
+    getContributions: (id: string, phone?: string) => {
+      const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
+      return request<Contribution[]>("GET", `${endpoints.events.contribute(id)}${query}`);
+    },
+  },
+  contributions: {
+    verifyPhone: (payload: { phone: string; eventId: string }) =>
+      request<{ message: string; token: string; expiresIn: string }>("POST", endpoints.contributions.verifyPhone(), payload),
+  },
+  payments: {
+    process: (payload: {
+      eventId?: string;
+      contributionId?: string;
+      amount: number;
+      paymentMethod?: "card" | "mobile_money" | "bank_transfer" | "cash" | "other";
+      paymentProvider?: string;
+      payerName: string;
+      payerEmail?: string;
+      payerPhone: string;
+      metadata?: Record<string, unknown>;
+    }) => request<{ success: boolean; message: string }>("POST", "/payments/process", payload),
   },
 };
 

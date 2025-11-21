@@ -19,6 +19,10 @@ export const endpoints = {
     contribute: (id: string) => `/events/${id}/contributions`,
     createPledge: (id: string) => `/events/${id}/pledges`,
   },
+  // Contributions
+  contributions: {
+    verifyPhone: () => `/contributions/verify-phone`,
+  },
 } as const;
 
 export type EndpointTree = typeof endpoints;

@@ -31,13 +31,13 @@ This document contains all the API endpoints that need to be implemented for the
 ## 🎯 Events Management
 
 ### Event CRUD Operations
-- [x] `GET /api/events` - Get all events for logged-in user (authenticated) *(Modified)*
-- [x] `GET /api/events/:id` - Get specific event *(Already implemented)*
+- [x] `GET /api/events` - Get all events for logged-in user (authenticated) *(Modified - currentAmount computed from Payments table)*
+- [x] `GET /api/events/:id` - Get specific event *(Already implemented - currentAmount computed from Payments table)*
 - [x] `POST /api/events` - Create new event (authenticated) *(Already implemented)*
-- [x] `PUT /api/events/:id` - Update event (organizer/admin only) *(Modified - Added authorization)*
+- [x] `PUT /api/events/:id` - Update event (organizer/admin only) *(Modified - Added authorization, returns currentAmount computed from Payments table)*
 - [x] `DELETE /api/events/:id` - Delete event (organizer/admin only) *(Modified - Added authorization)*
-- [x] `GET /api/events/user/:userId` - Get events by user (admin only) *(Modified - Admin only)*
-- [x] `GET /api/events/search` - Search events with filters (authenticated - organizers: own events, admins: all events) *(Modified)*
+- [x] `GET /api/events/user/:userId` - Get events by user (admin only) *(Modified - Admin only, currentAmount computed from Payments table)*
+- [x] `GET /api/events/search` - Search events with filters (authenticated - organizers: own events, admins: all events) *(Modified - currentAmount computed from Payments table)*
 
 ### Event Updates & Announcements
 - [x] `GET /api/events/:id/updates` - Get event updates *(Just implemented)*
@@ -50,25 +50,19 @@ This document contains all the API endpoints that need to be implemented for the
 ### Contribution Management
 - [x] `GET /api/events/:eventId/contributions` - Get contributions for event *(Already implemented)*
 - [x] `POST /api/events/:eventId/contributions` - Create contribution *(Already implemented)*
-- [x] `POST /api/events/:eventId/pledges` - Create pledge *(Just implemented)*
+- [x] `POST /api/events/:eventId/pledges` - Create pledge *(Deprecated - use contributions endpoint instead, kept for backward compatibility. All data stored in Contributions sheet - Pledges sheet has been removed)*
 - [x] `PUT /api/contributions/:id` - Update contribution status *(Already implemented)*
 - [ ] `GET /api/contributions/:id` - Get specific contribution
-- [ ] `GET /api/users/:userId/contributions` - Get user's contributions
+- [ ] `GET /api/contributions/user/:phone` - Get user's contributions by phone
+- [ ] `POST /api/contributions/:id/reminder` - Send reminder for unpaid contribution
 
 ### Payment Processing
-- [ ] `POST /api/payments/process` - Process payment
-- [ ] `GET /api/payments/:id` - Get payment details
-- [ ] `PUT /api/payments/:id/status` - Update payment status
+- [x] `POST /api/payments/process` - Process payment *(Supports direct payments with eventId using FIFO allocation, partial payments, excess handling, auto-creates contributions for excess; supports direct contribution payment when contributionId provided)*
+- [x] `POST /api/payments/create-and-pay` - Create contribution and process payment *(Always creates a new contribution first, then processes payment for it with the same amount)*
+- [x] `GET /api/payments/:id` - Get payment details *(Just implemented)*
+- [x] `PUT /api/payments/:id/status` - Update payment status *(Just implemented)*
 - [ ] `POST /api/payments/:id/refund` - Process refund
-- [ ] `GET /api/payments/contribution/:contributionId` - Get payments for contribution
-
-### Pledge Management
-- [ ] `GET /api/pledges` - Get all pledges
-- [ ] `GET /api/pledges/:id` - Get specific pledge
-- [ ] `PUT /api/pledges/:id/fulfill` - Fulfill pledge
-- [ ] `PUT /api/pledges/:id/cancel` - Cancel pledge
-- [ ] `GET /api/pledges/user/:userId` - Get user's pledges
-- [ ] `POST /api/pledges/:id/reminder` - Send pledge reminder
+- [x] `GET /api/payments/contribution/:contributionId` - Get payments for contribution *(Just implemented)*
 
 ## 💳 Payment Methods
 
@@ -178,14 +172,21 @@ This document contains all the API endpoints that need to be implemented for the
 ## 📈 Progress Tracking
 
 ### Overall Progress
-- **Total Endpoints**: 85
-- **Completed**: 12 (14%)
-- **Remaining**: 73 (86%)
+- **Total Endpoints**: 79
+- **Completed**: 25 (32%)
+- **Remaining**: 54 (68%)
 
 ### By Category Progress
-- **Authentication & Users**: 9/15 (60%)
-- **Events**: 5/12 (42%)
-- **Contributions & Payments**: 4/15 (27%)
+- **Authentication & Users**: 6/17 (35%)
+  - User Registration & Authentication: 4/8 (50%)
+  - User Profile Management: 2/5 (40%)
+  - User Administration: 0/4 (0%)
+- **Events**: 10/10 (100%)
+  - Event CRUD Operations: 6/6 (100%)
+  - Event Updates & Announcements: 4/4 (100%)
+- **Contributions & Payments**: 8/11 (73%)
+  - Contribution Management: 4/7 (57%)
+  - Payment Processing: 4/4 (100%)
 - **Payment Methods**: 0/6 (0%)
 - **Notifications**: 0/8 (0%)
 - **Security & Logging**: 0/5 (0%)

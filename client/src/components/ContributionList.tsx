@@ -2,17 +2,23 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Contribution } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
-import { MessageSquare } from "lucide-react";
+import { Loader2, MessageSquare } from "lucide-react";
 
 interface ContributionListProps {
   contributions: Contribution[];
+  isLoading?: boolean;
 }
 
-export default function ContributionList({ contributions }: ContributionListProps) {
+export default function ContributionList({ contributions, isLoading = false }: ContributionListProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Contributions</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle>Recent Contributions</CardTitle>
+          {isLoading && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {contributions.length === 0 ? (
