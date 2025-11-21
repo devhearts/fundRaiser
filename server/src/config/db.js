@@ -34,6 +34,15 @@ const getContributions = async () => {
   }
 };
 
+const getPayments = async (includeDeleted = false) => {
+  try {
+    return await sheetsService.getAllPayments(includeDeleted);
+  } catch (error) {
+    logger.error('Failed to get payments:', error.message);
+    return [];
+  }
+};
+
 const addEvent = async (event) => {
   try {
     return await sheetsService.createEvent(event);
@@ -159,10 +168,76 @@ const deleteEventUpdate = async (id) => {
   }
 };
 
+// Payment functions
+const findPaymentById = async (id) => {
+  try {
+    return await sheetsService.getPaymentById(id);
+  } catch (error) {
+    logger.error('Failed to find payment by ID:', error.message);
+    return null;
+  }
+};
+
+const findPaymentsByContributionId = async (contributionId) => {
+  try {
+    return await sheetsService.getPaymentsByContributionId(contributionId);
+  } catch (error) {
+    logger.error('Failed to find payments by contribution ID:', error.message);
+    return [];
+  }
+};
+
+const findContributionsByPhoneAndEvent = async (phone, eventId) => {
+  try {
+    return await sheetsService.getContributionsByPhoneAndEvent(phone, eventId);
+  } catch (error) {
+    logger.error('Failed to find contributions by phone and event:', error.message);
+    return [];
+  }
+};
+
+const findPaymentsByPhoneAndEvent = async (phone, eventId) => {
+  try {
+    return await sheetsService.getPaymentsByPhoneAndEvent(phone, eventId);
+  } catch (error) {
+    logger.error('Failed to find payments by phone and event:', error.message);
+    return [];
+  }
+};
+
+const addPayment = async (payment) => {
+  try {
+    return await sheetsService.createPayment(payment);
+  } catch (error) {
+    logger.error('Failed to add payment:', error.message);
+    throw error;
+  }
+};
+
+const updatePayment = async (id, updates) => {
+  try {
+    return await sheetsService.updatePayment(id, updates);
+  } catch (error) {
+    logger.error('Failed to update payment:', error.message);
+    throw error;
+  }
+};
+
+// Soft delete payment - sets deletedAt timestamp instead of removing the record
+const deletePayment = async (id) => {
+  try {
+    return await sheetsService.deletePayment(id);
+  } catch (error) {
+    logger.error('Failed to delete payment:', error.message);
+    throw error;
+  }
+};
+
 module.exports = {
   connectDatabase,
   getEvents,
   getContributions,
+  getPayments,
   addEvent,
   addContribution,
   updateEvent,
@@ -171,9 +246,16 @@ module.exports = {
   findEventById,
   findContributionById,
   findContributionsByEventId,
+  findContributionsByPhoneAndEvent,
   getEventUpdatesByEventId,
   getEventUpdateById,
   addEventUpdate,
   updateEventUpdate,
-  deleteEventUpdate
+  deleteEventUpdate,
+  findPaymentById,
+  findPaymentsByContributionId,
+  findPaymentsByPhoneAndEvent,
+  addPayment,
+  updatePayment,
+  deletePayment
 };

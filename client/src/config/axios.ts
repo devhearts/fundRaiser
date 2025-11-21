@@ -13,8 +13,14 @@ export const axiosInstance: AxiosInstance = axios.create({
 // Request interceptor to add auth token to requests
 axiosInstance.interceptors.request.use(
   (config) => {
-    // Get token from localStorage
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    // Get auth token from localStorage (for authenticated users)
+    const authToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    
+    // Get phone verification token from localStorage (for phone verification)
+    const phoneToken = typeof window !== 'undefined' ? localStorage.getItem('phoneToken') : null;
+    
+    // Prefer auth token, fall back to phone token
+    const token = authToken || phoneToken;
     
     // Add Authorization header if token exists
     if (token) {

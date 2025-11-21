@@ -3,6 +3,71 @@ const db = require('../config/db');
 const sheetsService = require('../services/sheets.service');
 const logger = require('../utils/logger');
 
+/**
+ * Compute currentAmount for events by summing completed payments
+ * This function looks up payments in the Payments table and calculates
+ * how much has been paid for each event by:
+ * 1. Mapping contributions to their events
+ * 2. Finding all completed payments
+ * 3. Summing payment amounts from fulfilledContributions array
+ * 
+ * @param {string[]} eventIds - Optional array of event IDs to compute for. If empty, computes for all events.
+ * @returns {Map<string, number>} Map of eventId -> currentAmount (sum of completed payments)
+ */
+const computeEventCurrentAmounts = async (eventIds = []) => {
+  try {
+    const eventIdSet = eventIds.length ? new Set(eventIds) : null;
+    // Get all contributions and payments from database
+    const [allContributions, allPayments] = await Promise.all([
+      db.getContributions(),
+      db.getPayments()
+    ]);
+
+    const contributionToEvent = new Map();
+    const totals = new Map();
+
+    allContributions.forEach(contribution => {
+      if (!eventIdSet || eventIdSet.has(contribution.eventId)) {
+        contributionToEvent.set(contribution.id, contribution.eventId);
+        if (!totals.has(contribution.eventId)) {
+          totals.set(contribution.eventId, 0);
+        }
+      }
+    });
+
+    if (eventIdSet) {
+      eventIds.forEach(id => {
+        if (!totals.has(id)) {
+          totals.set(id, 0);
+        }
+      });
+    }
+
+    // Sum up all completed payments for each event
+    allPayments
+      .filter(payment => payment.status === 'completed')
+      .forEach(payment => {
+        const fulfilledList = Array.isArray(payment.fulfilledContributions) && payment.fulfilledContributions.length > 0
+          ? payment.fulfilledContributions
+          : [{ contributionId: payment.contributionId, amount: payment.amount }];
+
+        fulfilledList.forEach(fulfilled => {
+          const eventId = contributionToEvent.get(fulfilled.contributionId);
+          if (!eventId) return;
+          if (eventIdSet && !eventIdSet.has(eventId)) return;
+
+          const amount = parseFloat(fulfilled.amount) || 0;
+          totals.set(eventId, (totals.get(eventId) || 0) + amount);
+        });
+      });
+
+    return totals;
+  } catch (error) {
+    logger.error('Failed to compute event current amounts:', error.message);
+    return new Map();
+  }
+};
+
 // Get all events for logged-in user
 const getAllEvents = async (req, res) => {
   try {
@@ -16,12 +81,19 @@ const getAllEvents = async (req, res) => {
     // Get all events and filter by the logged-in user's email
     const events = await db.getEvents();
     const userEvents = events.filter(event => event.organizerEmail === user.email);
+    const eventIds = userEvents.map(event => event.id);
+    const currentAmounts = await computeEventCurrentAmounts(eventIds);
+
+    const eventsWithTotals = userEvents.map(event => ({
+      ...event,
+      currentAmount: currentAmounts.get(event.id) || 0
+    }));
 
     // Calculate events stats for the user
-    const eventsStats = await calculateEventsStats(user.email);
+    const eventsStats = await calculateEventsStats(user.email, currentAmounts);
 
     res.json({
-      events: userEvents,
+      events: eventsWithTotals,
       eventsStats: eventsStats
     });
   } catch (error) {
@@ -30,7 +102,7 @@ const getAllEvents = async (req, res) => {
 };
 
 // Helper function to calculate events stats for a user
-const calculateEventsStats = async (userEmail) => {
+const calculateEventsStats = async (userEmail, precomputedCurrentAmounts = null) => {
   try {
     // Get all events created by the user
     const allEvents = await db.getEvents();
@@ -41,22 +113,23 @@ const calculateEventsStats = async (userEmail) => {
     
     // Get event IDs for user's events
     const userEventIds = userEvents.map(event => event.id);
+    const currentAmounts = precomputedCurrentAmounts || await computeEventCurrentAmounts(userEventIds);
     
     // Filter contributions that belong to user's events
     const userContributions = allContributions.filter(contribution => 
       userEventIds.includes(contribution.eventId)
     );
     
-    // Calculate totalRaised (completed contributions for user's events)
-    const totalRaised = userContributions
-      .filter(c => c.status === 'completed')
-      .reduce((sum, c) => sum + (c.amount || 0), 0);
+    // Calculate totalRaised based on completed payments
+    const totalRaised = userEventIds.reduce((sum, eventId) => {
+      return sum + (currentAmounts.get(eventId) || 0);
+    }, 0);
     
     // Calculate activeEvents (events where goalAmount > currentAmount and status is 'active')
-    const activeEvents = userEvents.filter(event => 
-      event.status === 'active' && 
-      (event.currentAmount || 0) < (event.goalAmount || 0)
-    ).length;
+    const activeEvents = userEvents.filter(event => {
+      const currentAmount = currentAmounts.get(event.id) || 0;
+      return event.status === 'active' && currentAmount < (event.goalAmount || 0);
+    }).length;
     
     // Calculate completedPledges (contributions with status='completed')
     const completedPledges = userContributions.filter(c => c.status === 'completed').length;
@@ -92,9 +165,11 @@ const getEventById = async (req, res) => {
     
     // Fetch contributions for this event
     const contributions = await db.findContributionsByEventId(eventId);
+    const currentAmounts = await computeEventCurrentAmounts([eventId]);
     const isAuthenticated = !!req.user;
     const response = {
-      ...event
+      ...event,
+      currentAmount: currentAmounts.get(eventId) || 0
     };
 
     if (isAuthenticated) {
@@ -149,7 +224,6 @@ const createEvent = async (req, res) => {
       title,
       description,
       goalAmount,
-      currentAmount: 0,
       coverImage,
       location,
       deadline: deadline ? new Date(deadline) : null,
@@ -161,7 +235,10 @@ const createEvent = async (req, res) => {
     };
 
     const createdEvent = await db.addEvent(newEvent);
-    res.status(201).json(createdEvent);
+    res.status(201).json({
+      ...createdEvent,
+      currentAmount: 0
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to create event' });
   }
@@ -199,7 +276,11 @@ const updateEvent = async (req, res) => {
     }
 
     const updatedEvent = await db.updateEvent(eventId, updates);
-    res.json(updatedEvent);
+    const currentAmounts = await computeEventCurrentAmounts([eventId]);
+    res.json({
+      ...updatedEvent,
+      currentAmount: currentAmounts.get(eventId) || 0
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update event' });
   }
@@ -260,8 +341,14 @@ const getEventsByUser = async (req, res) => {
 
     // Filter events by organizerEmail (assuming userId is email)
     const userEvents = events.filter(event => event.organizerEmail === userId);
+    const eventIds = userEvents.map(event => event.id);
+    const currentAmounts = await computeEventCurrentAmounts(eventIds);
+    const eventsWithTotals = userEvents.map(event => ({
+      ...event,
+      currentAmount: currentAmounts.get(event.id) || 0
+    }));
 
-    res.json(userEvents);
+    res.json(eventsWithTotals);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch user events' });
   }
@@ -312,7 +399,14 @@ const searchEvents = async (req, res) => {
       events = events.filter(event => event.status === status);
     }
 
-    res.json(events);
+    const eventIds = events.map(event => event.id);
+    const currentAmounts = await computeEventCurrentAmounts(eventIds);
+    const eventsWithTotals = events.map(event => ({
+      ...event,
+      currentAmount: currentAmounts.get(event.id) || 0
+    }));
+
+    res.json(eventsWithTotals);
   } catch (error) {
     res.status(500).json({ error: 'Failed to search events' });
   }

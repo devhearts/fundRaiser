@@ -11,13 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, TrendingUp, Users, Bell, Share2, Eye, Check } from "lucide-react";
+import { DollarSign, TrendingUp, Users, Bell, Share2, Eye, Check, Loader2 } from "lucide-react";
 import ProgressBar from "@/components/ProgressBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { MOCK_CONTRIBUTIONS, MOCK_NOTIFICATIONS, MOCK_EVENTS } from "@/data/mockData";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/config/api";
 import NoContributions from "@/components/NoContributions";
 import NoNotifications from "@/components/NoNotifications";
@@ -27,15 +27,38 @@ export default function DashboardPage() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
+  const [loadingEventId, setLoadingEventId] = useState<string | null>(null);
   
   const { data: eventsResponse, isLoading: eventsLoading, isError: eventsError } = useQuery({
     queryKey: ["/api/events"],
     queryFn: () => api.events.list(),
   });
   
-  const handleViewEvent = (id: string) => {
-    setLocation(`/event/${id}`);
+  const handleViewEvent = async (id: string) => {
+    // Don't do anything if already loading this event
+    if (loadingEventId === id) return;
+    
+    setLoadingEventId(id);
+    try {
+      // Fetch the event in the background and cache it using React Query
+      await queryClient.fetchQuery({
+        queryKey: ["/api/events", id],
+        queryFn: () => api.events.byId(id),
+      });
+      // Only route if fetch was successful
+      setLocation(`/event/${id}`);
+    } catch (error) {
+      // Show error toast if fetch failed
+      toast({
+        title: "Failed to load event",
+        description: "Could not fetch event details. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingEventId(null);
+    }
   };
 
   const handleShareEvent = (id: string) => {
@@ -175,9 +198,19 @@ export default function DashboardPage() {
                           size="sm" 
                           onClick={() => handleViewEvent(event.id)}
                           data-testid={`button-view-${event.id}`}
+                          disabled={!!loadingEventId}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
+                          {loadingEventId === event.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View
+                            </>
+                          )}
                         </Button>
                         <Button 
                           variant="outline" 
@@ -257,9 +290,19 @@ export default function DashboardPage() {
                           size="sm" 
                           onClick={() => handleViewEvent(event.id)}
                           data-testid={`button-view-${event.id}`}
+                          disabled={!!loadingEventId}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
+                          {loadingEventId === event.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="h-4 w-4 mr-2" />
+                              View
+                            </>
+                          )}
                         </Button>
                         <Button 
                           variant="outline" 

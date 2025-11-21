@@ -129,7 +129,7 @@ The server will run on `http://localhost:3000`
   title: string,
   description: string,
   goalAmount: number,
-  currentAmount: number,
+  currentAmount: number, // computed from completed payments
   coverImage: string | null,
   location: string | null,
   deadline: Date | null,

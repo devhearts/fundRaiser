@@ -15,7 +15,6 @@ const sheetsConfig = {
     contributions: 'Contributions',
     users: 'Users',
     payments: 'Payments',
-    pledges: 'Pledges',
     notifications: 'Notifications',
     loginLogs: 'LoginLogs',
     eventUpdates: 'EventUpdates',
@@ -29,7 +28,6 @@ const sheetsConfig = {
     'title', 
     'description',
     'goalAmount',
-    'currentAmount',
     'coverImage',
     'location',
     'deadline',
@@ -80,27 +78,19 @@ const sheetsConfig = {
   // Column headers for Payments sheet
   paymentsHeaders: [
     'id',
-    'contributionId',
+    'contributionId', // Required - can get eventId from contribution
     'amount',
     'paymentMethod',
-    'transactionId',
     'paymentProvider',
+    'payerName',
+    'payerEmail',
+    'payerPhone',
+    'fulfilledContributions', // JSON array: [{contributionId, amount}]
+    'transactionId',
     'status',
     'processedAt',
     'failureReason',
-    'createdAt'
-  ],
-  
-  // Column headers for Pledges sheet
-  pledgesHeaders: [
-    'id',
-    'contributionId',
-    'pledgeAmount',
-    'pledgeDate',
-    'fulfillmentDate',
-    'status',
-    'reminderSent',
-    'lastReminderDate',
+    'deletedAt',
     'createdAt'
   ],
   
@@ -313,32 +303,6 @@ const ensureSheetsExist = async (sheets) => {
       });
     }
     
-    // Create Pledges sheet if it doesn't exist
-    if (!existingSheets.includes(sheetsConfig.sheets.pledges)) {
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        resource: {
-          requests: [{
-            addSheet: {
-              properties: {
-                title: sheetsConfig.sheets.pledges
-              }
-            }
-          }]
-        }
-      });
-      
-      // Add headers to Pledges sheet
-      await sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${sheetsConfig.sheets.pledges}!A1`,
-        valueInputOption: 'RAW',
-        resource: {
-          values: [sheetsConfig.pledgesHeaders]
-        }
-      });
-    }
-    
     // Create Notifications sheet if it doesn't exist
     if (!existingSheets.includes(sheetsConfig.sheets.notifications)) {
       await sheets.spreadsheets.batchUpdate({
@@ -479,38 +443,37 @@ const ensureSheetsExist = async (sheets) => {
   }
 };
 
-// Update existing sheet headers to match current configuration
-const updateSheetHeaders = async (sheets) => {
+// Helper function to update sheet headers and reorganize data
+const updateSheetHeadersForSheet = async (sheets, sheetName, expectedHeaders) => {
   try {
     const spreadsheetId = sheetsConfig.spreadsheetId;
     
-    // Get current headers and all data from the Contributions sheet
-    const contributionsResponse = await sheets.spreadsheets.values.get({
+    // Get current headers and all data from the sheet
+    const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetsConfig.sheets.contributions}!A:Z`,
+      range: `${sheetName}!A:Z`,
     });
     
-    const allRows = contributionsResponse.data.values || [];
+    const allRows = response.data.values || [];
     if (allRows.length === 0) {
       // Sheet is empty, just update headers
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${sheetsConfig.sheets.contributions}!A1`,
+        range: `${sheetName}!A1`,
         valueInputOption: 'RAW',
         resource: {
-          values: [sheetsConfig.contributionsHeaders]
+          values: [expectedHeaders]
         }
       });
       return;
     }
     
     const currentHeaders = allRows[0] || [];
-    const expectedHeaders = sheetsConfig.contributionsHeaders;
     
     // Check if headers need updating
     if (currentHeaders.length !== expectedHeaders.length || 
         !expectedHeaders.every((header, index) => currentHeaders[index] === header)) {
-      console.log('📝 Updating Contributions sheet headers and reorganizing data...');
+      console.log(`📝 Updating ${sheetName} sheet headers and reorganizing data...`);
       
       // Create a map of old header positions
       const headerMap = new Map();
@@ -542,23 +505,37 @@ const updateSheetHeaders = async (sheets) => {
       // Clear the entire sheet and write new data
       await sheets.spreadsheets.values.clear({
         spreadsheetId,
-        range: `${sheetsConfig.sheets.contributions}!A:Z`,
+        range: `${sheetName}!A:Z`,
       });
       
       // Write all rows (headers + data) back
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${sheetsConfig.sheets.contributions}!A1`,
+        range: `${sheetName}!A1`,
         valueInputOption: 'RAW',
         resource: {
           values: reorganizedRows
         }
       });
       
-      console.log(`✅ Contributions sheet updated: ${reorganizedRows.length - 1} rows reorganized with new headers`);
+      console.log(`✅ ${sheetName} sheet updated: ${reorganizedRows.length - 1} rows reorganized with new headers`);
     }
   } catch (error) {
     // Don't fail initialization if header update fails (sheet might not exist yet)
+    console.warn(`⚠️  Could not update ${sheetName} sheet headers:`, error.message);
+  }
+};
+
+// Update existing sheet headers to match current configuration
+const updateSheetHeaders = async (sheets) => {
+  try {
+    // Update Contributions sheet
+    await updateSheetHeadersForSheet(sheets, sheetsConfig.sheets.contributions, sheetsConfig.contributionsHeaders);
+    
+    // Update Payments sheet
+    await updateSheetHeadersForSheet(sheets, sheetsConfig.sheets.payments, sheetsConfig.paymentsHeaders);
+  } catch (error) {
+    // Don't fail initialization if header update fails
     console.warn('⚠️  Could not update sheet headers:', error.message);
   }
 };
