@@ -17,6 +17,10 @@ class GoogleSheetsService {
     }
   }
 
+  isInitialized() {
+    return this.sheets !== null;
+  }
+
   // Generic method to get all rows from a sheet
   async getAllRows(sheetName) {
     try {
@@ -54,15 +58,15 @@ class GoogleSheetsService {
         const obj = {};
         headers.forEach((header, index) => {
           let value = row[index] || '';
-          
+
           // Convert string values back to appropriate types
           if (header === 'goalAmount' || header === 'amount') {
             value = parseFloat(value) || 0;
-          } else if (header === 'isPublic' || header === 'isAnonymous' || header === 'isPledge' || 
+          } else if (header === 'isPublic' || header === 'isAnonymous' || header === 'isPledge' ||
                      header === 'isVerified' || header === 'isActive' || header === 'isDefault') {
             value = value === 'TRUE' || value === 'true';
-          } else if (header === 'deadline' || header === 'createdAt' || header === 'updatedAt' || 
-                     header === 'lastLogin' || header === 'expiresAt' || header === 'pledgeDate' || 
+          } else if (header === 'deadline' || header === 'createdAt' || header === 'updatedAt' ||
+                     header === 'lastLogin' || header === 'expiresAt' || header === 'pledgeDate' ||
                      header === 'fulfillmentDate' || header === 'sentAt' || header === 'readAt' ||
                      header === 'processedAt' || header === 'lastReminderDate' || header === 'deletedAt') {
             value = value ? new Date(value) : null;
@@ -74,7 +78,7 @@ class GoogleSheetsService {
               value = [];
             }
           }
-          
+
           obj[header] = value;
         });
         return obj;
@@ -101,7 +105,7 @@ class GoogleSheetsService {
       }
 
       let headers;
-      
+
       // Determine headers based on sheet name
       switch (sheetName) {
         case sheetsConfig.sheets.events:
@@ -139,7 +143,7 @@ class GoogleSheetsService {
       // Convert object to array in the correct order
       const row = headers.map(header => {
         let value = data[header] || '';
-        
+
         // Convert values to string format for Google Sheets
         if (typeof value === 'boolean') {
           value = value ? 'TRUE' : 'FALSE';
@@ -151,7 +155,7 @@ class GoogleSheetsService {
         } else if (value === null || value === undefined) {
           value = '';
         }
-        
+
         return value;
       });
 
@@ -165,10 +169,10 @@ class GoogleSheetsService {
         }
         return letter;
       };
-      
+
       const endColumn = getColumnLetter(headers.length);
       const range = `${sheetName}!A:${endColumn}`;
-      
+
       await this.sheets.spreadsheets.values.append({
         spreadsheetId: this.spreadsheetId,
         range: range,
@@ -192,14 +196,14 @@ class GoogleSheetsService {
     try {
       const rows = await this.getAllRows(sheetName);
       const rowIndex = rows.findIndex(row => row.id === id);
-      
+
       if (rowIndex === -1) {
         throw new Error(`${sheetName.slice(0, -1)} not found`);
       }
 
       // Update the data
       const updatedData = { ...rows[rowIndex], ...updates };
-      
+
       // Delete the old row and add the updated one
       await this.deleteRow(sheetName, id);
       await this.addRow(sheetName, updatedData);
@@ -217,7 +221,7 @@ class GoogleSheetsService {
     try {
       const rows = await this.getAllRows(sheetName);
       const rowIndex = rows.findIndex(row => row.id === id);
-      
+
       if (rowIndex === -1) {
         throw new Error(`${sheetName.slice(0, -1)} not found`);
       }
@@ -430,10 +434,10 @@ class GoogleSheetsService {
     // Get all contributions for this event to filter payments
     const contributions = await this.getContributionsByEventId(eventId);
     const contributionIds = new Set(contributions.map(c => c.id));
-    
+
     // Filter payments by phone, status, and contributionId matching event
-    return payments.filter(payment => 
-      payment.payerPhone === phone && 
+    return payments.filter(payment =>
+      payment.payerPhone === phone &&
       contributionIds.has(payment.contributionId) &&
       payment.status === 'completed'
     );

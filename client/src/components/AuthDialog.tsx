@@ -78,6 +78,7 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
   const handleLogin = async (data: LoginFormData) => {
     try {
       setLoginError(null);
+      loginForm.clearErrors();
       await login(data.email, data.password);
       toast({
         title: "Welcome back!",
@@ -85,15 +86,44 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
       });
       onOpenChange(false);
       loginForm.reset();
-    } catch (error) {
-      const message = (error as any)?.message || "Login failed. Please try again.";
-      setLoginError(message);
+    } catch (error: any) {
+      // Check if this is a validation error with details
+      const errorData = error?.data || error?.response?.data;
+      
+      if (errorData?.details && Array.isArray(errorData.details)) {
+        // Handle field-specific validation errors
+        let hasFieldErrors = false;
+        
+        errorData.details.forEach((detail: { field: string; message: string }) => {
+          const fieldName = detail.field as keyof LoginFormData;
+          if (fieldName in loginForm.getValues()) {
+            loginForm.setError(fieldName, {
+              type: 'server',
+              message: detail.message,
+            });
+            hasFieldErrors = true;
+          }
+        });
+        
+        // Set general error message if there's an error field
+        if (errorData.error || errorData.message) {
+          setLoginError(errorData.error || errorData.message);
+        } else if (!hasFieldErrors) {
+          setLoginError("Please fix the errors above and try again.");
+        }
+      } else {
+        // Handle general errors
+        const message = error?.message || errorData?.message || errorData?.error || "Login failed. Please try again.";
+        setLoginError(message);
+      }
     }
   };
 
   const handleSignup = async (data: SignupFormData) => {
     try {
       setSignupError(null);
+      // Clear any previous field errors
+      signupForm.clearErrors();
       await signup(data.name, data.email, data.phone, data.password);
       toast({
         title: "Account created!",
@@ -101,9 +131,42 @@ export default function AuthDialog({ open, onOpenChange, defaultTab = "login" }:
       });
       onOpenChange(false);
       signupForm.reset();
-    } catch (error) {
-      const message = (error as any)?.message || "Signup failed. Please try again.";
-      setSignupError(message);
+    } catch (error: any) {
+      // Check if this is a validation error with details
+      const errorData = error?.data || error?.response?.data;
+      
+      if (errorData?.details && Array.isArray(errorData.details)) {
+        // Handle field-specific validation errors
+        let hasFieldErrors = false;
+        
+        errorData.details.forEach((detail: { field: string; message: string }) => {
+          const fieldName = detail.field as keyof SignupFormData;
+          // Map backend field names to form field names if needed
+          const formFieldName = fieldName === 'phone' ? 'phone' : 
+                               fieldName === 'email' ? 'email' :
+                               fieldName === 'name' ? 'name' :
+                               fieldName === 'password' ? 'password' : fieldName;
+          
+          if (formFieldName in signupForm.getValues()) {
+            signupForm.setError(formFieldName as any, {
+              type: 'server',
+              message: detail.message,
+            });
+            hasFieldErrors = true;
+          }
+        });
+        
+        // Set general error message if there's an error field
+        if (errorData.error || errorData.message) {
+          setSignupError(errorData.error || errorData.message);
+        } else if (!hasFieldErrors) {
+          setSignupError("Please fix the errors above and try again.");
+        }
+      } else {
+        // Handle general errors
+        const message = error?.message || errorData?.message || errorData?.error || "Signup failed. Please try again.";
+        setSignupError(message);
+      }
     }
   };
 
