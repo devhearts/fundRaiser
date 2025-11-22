@@ -19,7 +19,13 @@ export async function request<T>(
     // Axios wraps errors, extract the response data if available
     if (error.response) {
       // Server responded with error status
-      throw new Error(error.response.data?.message || error.response.statusText || `HTTP ${error.response.status}`);
+      // Preserve the full error response for validation errors
+      const errorData = error.response.data;
+      const apiError = new Error(errorData?.message || errorData?.error || error.response.statusText || `HTTP ${error.response.status}`);
+      // Attach the full error data for validation error handling
+      (apiError as any).response = error.response;
+      (apiError as any).data = errorData;
+      throw apiError;
     } else if (error.request) {
       // Request made but no response received
       throw new Error('Network error: No response from server');
