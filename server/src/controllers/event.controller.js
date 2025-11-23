@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../config/db');
 const sheetsService = require('../services/sheets.service');
 const logger = require('../utils/logger');
+const { normalizeEmail } = require('../utils/email.utils');
 
 /**
  * Compute currentAmount for events by summing completed payments
@@ -71,16 +72,46 @@ const computeEventCurrentAmounts = async (eventIds = []) => {
 // Get all events for logged-in user
 const getAllEvents = async (req, res) => {
   try {
+    // Log the JWT token payload
+    logger.info(`[getAllEvents] JWT payload - id: ${req.user?.id}, email: ${req.user?.email}, role: ${req.user?.role}`);
+    
     // Get the logged-in user's email
     const user = await sheetsService.getUserById(req.user.id);
     
     if (!user) {
+      logger.error(`[getAllEvents] User not found for ID: ${req.user.id}`);
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Get all events and filter by the logged-in user's email
+    logger.info(`[getAllEvents] Found user - id: ${user.id}, email: ${user.email}, name: ${user.name}`);
+
+    // Get all events and filter by the logged-in user's email (case-insensitive)
     const events = await db.getEvents();
-    const userEvents = events.filter(event => event.organizerEmail === user.email);
+    logger.info(`[getAllEvents] Total events in database: ${events.length}`);
+    
+    // Log sample of event organizer emails for debugging
+    if (events.length > 0) {
+      const sampleEmails = events.slice(0, 5).map(e => e.organizerEmail);
+      logger.info(`[getAllEvents] Sample organizer emails from events: ${sampleEmails.join(', ')}`);
+    }
+    
+    // Normalize email for comparison
+    const userEmailNormalized = normalizeEmail(user.email);
+    
+    const userEvents = events.filter(event => {
+      const eventEmailNormalized = normalizeEmail(event.organizerEmail);
+      return eventEmailNormalized === userEmailNormalized;
+    });
+    
+    // Log for debugging
+    logger.info(`[getAllEvents] User email: ${user.email} (normalized: ${userEmailNormalized}), found ${userEvents.length} events out of ${events.length} total`);
+    
+    if (userEvents.length === 0 && events.length > 0) {
+      // Log all unique organizer emails to help debug
+      const uniqueEmails = [...new Set(events.map(e => normalizeEmail(e.organizerEmail)))];
+      logger.warn(`[getAllEvents] No events found for user. User email (normalized): ${userEmailNormalized}, Available organizer emails (normalized): ${uniqueEmails.join(', ')}`);
+    }
+    
     const eventIds = userEvents.map(event => event.id);
     const currentAmounts = await computeEventCurrentAmounts(eventIds);
 
@@ -97,6 +128,7 @@ const getAllEvents = async (req, res) => {
       eventsStats: eventsStats
     });
   } catch (error) {
+    logger.error('Error fetching events:', error);
     res.status(500).json({ error: 'Failed to fetch events' });
   }
 };
@@ -186,12 +218,18 @@ const getEventById = async (req, res) => {
 // Create new event
 const createEvent = async (req, res) => {
   try {
+    // Log the JWT token payload
+    logger.info(`[createEvent] JWT payload - id: ${req.user?.id}, email: ${req.user?.email}, role: ${req.user?.role}`);
+    
     // Fetch the authenticated user's information
     const user = await sheetsService.getUserById(req.user.id);
 
     if (!user) {
+      logger.error(`[createEvent] User not found for ID: ${req.user.id}`);
       return res.status(404).json({ error: 'User not found' });
     }
+
+    logger.info(`[createEvent] Found user - id: ${user.id}, email: ${user.email}, name: ${user.name}`);
 
     const {
       title,
@@ -205,11 +243,15 @@ const createEvent = async (req, res) => {
     } = req.body;
 
     // Check if user already has an event with the same title (case-insensitive)
+    // Normalize email for comparison
+    const userEmailNormalized = normalizeEmail(user.email);
+    
     const existingEvents = await db.getEvents();
-    const duplicateEvent = existingEvents.find(event =>
-      event.organizerEmail === user.email &&
-      event.title.toLowerCase() === title.toLowerCase()
-    );
+    const duplicateEvent = existingEvents.find(event => {
+      const eventEmailNormalized = normalizeEmail(event.organizerEmail);
+      return eventEmailNormalized === userEmailNormalized &&
+             event.title.toLowerCase() === title.toLowerCase();
+    });
 
     if (duplicateEvent) {
       return res.status(409).json({
@@ -219,6 +261,9 @@ const createEvent = async (req, res) => {
     }
 
     // Use the authenticated user's information for organizer details
+    // Use the already normalized email from above
+    const normalizedEmail = userEmailNormalized;
+    
     const newEvent = {
       id: uuidv4(),
       title,
@@ -229,12 +274,15 @@ const createEvent = async (req, res) => {
       deadline: deadline ? new Date(deadline) : null,
       isPublic,
       organizerName: user.name,
-      organizerEmail: user.email,
+      organizerEmail: normalizedEmail, // Store normalized email for consistent matching
       status,
       createdAt: new Date()
     };
 
     const createdEvent = await db.addEvent(newEvent);
+    
+    logger.info(`[createEvent] Event created - id: ${createdEvent.id}, title: ${createdEvent.title}, organizerEmail: ${createdEvent.organizerEmail}`);
+    
     res.status(201).json({
       ...createdEvent,
       currentAmount: 0

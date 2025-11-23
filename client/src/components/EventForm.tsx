@@ -31,24 +31,17 @@ const eventFormSchema = z.object({
   location: z.string().optional(),
   deadline: z.date().optional(),
   isPublic: z.boolean(),
-  coverImage: z.string().optional().refine((val) => {
-    if (!val || val === "") return true; // Allow empty string
-    try {
-      new URL(val);
-      return true;
-    } catch {
-      return false;
-    }
-  }, "Please enter a valid URL"),
+  coverImage: z.string().optional(), // Base64 data URL or empty string
 });
 
 type EventFormData = z.infer<typeof eventFormSchema>;
 
 interface EventFormProps {
   onSubmit?: (data: any) => void;
+  isSubmitting?: boolean;
 }
 
-export default function EventForm({ onSubmit }: EventFormProps) {
+export default function EventForm({ onSubmit, isSubmitting = false }: EventFormProps) {
   const form = useForm<EventFormData>({
     resolver: zodResolver(eventFormSchema),
     mode: "onChange", // Validate on change for better UX
@@ -63,8 +56,47 @@ export default function EventForm({ onSubmit }: EventFormProps) {
     },
   });
 
+  // Handle image file upload and convert to base64
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      form.setError('coverImage', {
+        type: 'manual',
+        message: 'Please select a valid image file'
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      form.setError('coverImage', {
+        type: 'manual',
+        message: 'Image size must be less than 5MB'
+      });
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      form.setValue('coverImage', base64String);
+      form.clearErrors('coverImage');
+    };
+    reader.onerror = () => {
+      form.setError('coverImage', {
+        type: 'manual',
+        message: 'Failed to read image file'
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = (data: EventFormData) => {
-    console.log('Form validation passed, submitting data:', data);
     const eventData = {
       title: data.title,
       description: data.description,
@@ -75,12 +107,11 @@ export default function EventForm({ onSubmit }: EventFormProps) {
       coverImage: data.coverImage || undefined,
       status: 'active',
     };
-    console.log('Event created:', eventData);
     onSubmit?.(eventData);
   };
 
   const handleSubmitError = (errors: any) => {
-    console.log('Form validation errors:', errors);
+    // Form validation errors are handled by react-hook-form and displayed in the UI
   };
 
   return (
@@ -136,7 +167,7 @@ export default function EventForm({ onSubmit }: EventFormProps) {
                   name="goalAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Fundraising Goal ($) *</FormLabel>
+                      <FormLabel>Fundraising Goal (UGX) *</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -215,19 +246,51 @@ export default function EventForm({ onSubmit }: EventFormProps) {
                 name="coverImage"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cover Image URL</FormLabel>
+                    <FormLabel>Cover Image</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
-                        <Input
-                          placeholder="https://example.com/image.jpg"
-                          {...field}
-                          data-testid="input-cover-image"
-                        />
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="cursor-pointer"
+                            data-testid="input-cover-image"
+                          />
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                form.setValue('coverImage', '');
+                                // Reset file input
+                                const fileInput = document.querySelector('[data-testid="input-cover-image"]') as HTMLInputElement;
+                                if (fileInput) fileInput.value = '';
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          )}
+                        </div>
                         {field.value && (
-                          <div className="relative h-48 rounded-md overflow-hidden">
-                            <img src={field.value} alt="Cover preview" className="w-full h-full object-cover" />
+                          <div className="relative h-48 rounded-md overflow-hidden border">
+                            <img 
+                              src={field.value} 
+                              alt="Cover preview" 
+                              className="w-full h-full object-cover"
+                              onError={() => {
+                                form.setError('coverImage', {
+                                  type: 'manual',
+                                  message: 'Failed to load image'
+                                });
+                              }}
+                            />
                           </div>
                         )}
+                        <p className="text-xs text-muted-foreground">
+                          Upload an image file (JPG, PNG, etc.). Maximum size: 5MB
+                        </p>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -261,8 +324,13 @@ export default function EventForm({ onSubmit }: EventFormProps) {
               />
           </div>
 
-            <Button type="submit" className="w-full h-12 text-base" data-testid="button-submit">
-              Create Event & Generate Link
+            <Button 
+              type="submit" 
+              className="w-full h-12 text-base" 
+              data-testid="button-submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Creating Event..." : "Create Event & Generate Link"}
             </Button>
           </form>
         </Form>
