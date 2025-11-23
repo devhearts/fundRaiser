@@ -11,14 +11,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DollarSign, TrendingUp, Users, Bell, Share2, Eye, Check, Loader2 } from "lucide-react";
+import { HandCoins, TrendingUp, Users, Bell, Share2, Eye, Check, Loader2 } from "lucide-react";
 import ProgressBar from "@/components/ProgressBar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { MOCK_CONTRIBUTIONS, MOCK_NOTIFICATIONS, MOCK_EVENTS } from "@/data/mockData";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/config/api";
+import { Event } from "@shared/schema";
 import NoContributions from "@/components/NoContributions";
 import NoNotifications from "@/components/NoNotifications";
 import NoEvents from "@/components/NoEvents";
@@ -31,9 +31,10 @@ export default function DashboardPage() {
   const [copiedEventId, setCopiedEventId] = useState<string | null>(null);
   const [loadingEventId, setLoadingEventId] = useState<string | null>(null);
   
-  const { data: eventsResponse, isLoading: eventsLoading, isError: eventsError } = useQuery({
+  const { data: eventsResponse, isLoading: eventsLoading, isError: eventsError, error: eventsQueryError } = useQuery({
     queryKey: ["/api/events"],
     queryFn: () => api.events.list(),
+    enabled: isAuthenticated, // Only fetch when authenticated
   });
   
   const handleViewEvent = async (id: string) => {
@@ -79,14 +80,27 @@ export default function DashboardPage() {
     }
   }, [isAuthenticated, setLocation, toast]);
 
-  const eventsData = eventsResponse as any;
-  const allEvents = eventsData?.events ?? (Array.isArray(eventsResponse) ? eventsResponse : MOCK_EVENTS);
-  const eventsStats = eventsData?.eventsStats ?? null;
+  // API returns { events: Event[], eventsStats: {...} }
+  const allEvents = eventsResponse?.events ?? [];
+  const eventsStats = eventsResponse?.eventsStats ?? null;
+
+  // Log errors for debugging
+  useEffect(() => {
+    if (eventsError) {
+      console.error("Error fetching events:", eventsQueryError);
+      toast({
+        title: "Failed to load events",
+        description: eventsQueryError?.message || "Could not fetch your events. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [eventsError, eventsQueryError, toast]);
   
-  const activeEvents = (allEvents as any[]).filter((event: any) => event.status !== 'completed');
-  const completedEvents = (allEvents as any[]).filter((event: any) => event.status === 'completed');
+  const activeEvents = allEvents.filter((event: Event) => event.status !== 'completed');
+  const completedEvents = allEvents.filter((event: Event) => event.status === 'completed');
   
-  const contributions = (MOCK_CONTRIBUTIONS as unknown as any[]) ?? [];
+  // TODO: Implement API endpoint to fetch all user contributions across all events
+  const contributions: any[] = [];
 
   return (
     <div className="min-h-screen bg-background py-12">
@@ -100,7 +114,7 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Raised</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <HandCoins className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">UGX {eventsStats?.totalRaised?.toLocaleString() ?? 0}</div>
@@ -148,11 +162,7 @@ export default function DashboardPage() {
             <TabsTrigger value="completed" data-testid="tab-completed" className="min-w-[200px] px-8">Completed Events</TabsTrigger>
             <TabsTrigger value="notifications" data-testid="tab-notifications" className="min-w-[200px] px-8">
               Notifications
-              {MOCK_NOTIFICATIONS.filter(n => !n.read).length > 0 && (
-                <Badge className="ml-2 bg-primary text-primary-foreground px-2 py-0">
-                  {MOCK_NOTIFICATIONS.filter(n => !n.read).length}
-                </Badge>
-              )}
+              {/* TODO: Add unread count when notifications API is implemented */}
             </TabsTrigger>
           </TabsList>
 
@@ -376,37 +386,8 @@ export default function DashboardPage() {
           </TabsContent>
 
           <TabsContent value="notifications">
-            {MOCK_NOTIFICATIONS.length === 0 ? (
-              <NoNotifications />
-            ) : (
-              <Card>
-                <CardContent className="p-6 space-y-4">
-                  {MOCK_NOTIFICATIONS.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 rounded-lg border ${
-                        notification.read ? 'bg-background' : 'bg-primary/5 border-primary/20'
-                      }`}
-                      data-testid={`notification-${notification.id}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className={notification.read ? 'text-muted-foreground' : 'font-medium'}>
-                            {notification.message}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {notification.timestamp.toLocaleString()}
-                          </p>
-                        </div>
-                        {!notification.read && (
-                          <Badge className="bg-primary text-primary-foreground">New</Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            {/* TODO: Implement notifications API endpoint and fetch notifications here */}
+            <NoNotifications />
           </TabsContent>
         </Tabs>
       </div>

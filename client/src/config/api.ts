@@ -1,6 +1,6 @@
 import { endpoints } from "./endpoints";
 import axiosInstance from "./axios";
-import { Contribution } from "@shared/schema";
+import { Contribution, Event } from "@shared/schema";
 
 // Generic request function using axios
 export async function request<T>(
@@ -47,9 +47,9 @@ export const api = {
     me: () => request<{ id: string; name: string; email: string; phone?: string }>("GET", endpoints.auth.me()),
   },
   events: {
-    list: () => request<any[]>("GET", endpoints.events.list()),
-    create: (payload: Record<string, unknown>) => request<{ id: string }>("POST", endpoints.events.create(), payload),
-    byId: (id: string) => request<Record<string, unknown>>("GET", endpoints.events.byId(id)),
+    list: () => request<{ events: Event[]; eventsStats: any }>("GET", endpoints.events.list()),
+    create: (payload: Record<string, unknown>) => request<Event>("POST", endpoints.events.create(), payload),
+    byId: (id: string) => request<Event>("GET", endpoints.events.byId(id)),
     contribute: (id: string, payload: Record<string, unknown>) =>
       request<void>("POST", endpoints.events.contribute(id), payload),
     createPledge: (id: string, payload: Record<string, unknown>) =>

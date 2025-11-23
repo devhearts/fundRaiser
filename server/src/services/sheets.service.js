@@ -329,7 +329,27 @@ class GoogleSheetsService {
 
   async getUserById(id) {
     const users = await this.getAllUsers();
-    return users.find(user => user.id === id);
+    logger.info(`[getUserById] Looking for user with ID: ${id} (type: ${typeof id}), Total users: ${users.length}`);
+    
+    if (users.length > 0) {
+      const sampleIds = users.slice(0, 5).map(u => `${u.id} (type: ${typeof u.id})`);
+      logger.info(`[getUserById] Sample user IDs: ${sampleIds.join(', ')}`);
+    }
+    
+    // Try both strict and loose comparison (in case of type mismatch)
+    const user = users.find(user => {
+      const strictMatch = user.id === id;
+      const looseMatch = String(user.id).trim() === String(id).trim();
+      return strictMatch || looseMatch;
+    });
+    
+    if (user) {
+      logger.info(`[getUserById] Found user - id: ${user.id}, email: ${user.email}, name: ${user.name}`);
+    } else {
+      logger.warn(`[getUserById] User not found with ID: ${id}`);
+    }
+    
+    return user;
   }
 
   async getUserByEmail(email) {

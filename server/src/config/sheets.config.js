@@ -529,6 +529,9 @@ const updateSheetHeadersForSheet = async (sheets, sheetName, expectedHeaders) =>
 // Update existing sheet headers to match current configuration
 const updateSheetHeaders = async (sheets) => {
   try {
+    // Update Events sheet (fix column alignment)
+    await updateSheetHeadersForSheet(sheets, sheetsConfig.sheets.events, sheetsConfig.eventsHeaders);
+    
     // Update Contributions sheet
     await updateSheetHeadersForSheet(sheets, sheetsConfig.sheets.contributions, sheetsConfig.contributionsHeaders);
     

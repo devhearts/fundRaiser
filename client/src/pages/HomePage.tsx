@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Heart, Users, DollarSign, TrendingUp, Star, ArrowRight, Plus, Target } from "lucide-react";
+import { Search, Heart, Users, HandCoins, TrendingUp, Star, ArrowRight, Plus, Target } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { MOCK_EVENTS } from "@/data/mockData";
@@ -42,7 +42,7 @@ export default function HomePage() {
             <div className="space-y-8">
               <Badge variant="secondary" className="px-6 py-3 text-base">
                 <Heart className="w-5 h-5 mr-2" />
-                Trusted by 25,000+ couples and families
+                Trusted by 100+ couples and families
               </Badge>
               <h1 className="text-6xl md:text-8xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent leading-tight">
                 Fund Your
@@ -58,11 +58,11 @@ export default function HomePage() {
             <div className="flex flex-wrap justify-center gap-12 pt-8">
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Users className="w-6 h-6" />
-                <span className="text-lg font-medium">50K+ Contributors</span>
+                <span className="text-lg font-medium">1K+ Contributors</span>
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
-                <DollarSign className="w-6 h-6" />
-                <span className="text-lg font-medium">$5M+ Raised</span>
+                <HandCoins className="w-6 h-6" />
+                <span className="text-lg font-medium">UGX 5M+ Raised</span>
               </div>
               <div className="flex items-center gap-3 text-muted-foreground">
                 <TrendingUp className="w-6 h-6" />
@@ -85,19 +85,19 @@ export default function HomePage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               <div className="text-center space-y-2">
-                <div className="text-3xl md:text-4xl font-bold text-primary">25,000+</div>
+                <div className="text-3xl md:text-4xl font-bold text-primary">---</div>
                 <div className="text-sm text-muted-foreground">Happy Couples</div>
               </div>
               <div className="text-center space-y-2">
-                <div className="text-3xl md:text-4xl font-bold text-primary">8,500+</div>
+                <div className="text-3xl md:text-4xl font-bold text-primary">---</div>
                 <div className="text-sm text-muted-foreground">Successful Events</div>
               </div>
               <div className="text-center space-y-2">
-                <div className="text-3xl md:text-4xl font-bold text-primary">$5M+</div>
+                <div className="text-3xl md:text-4xl font-bold text-primary">---</div>
                 <div className="text-sm text-muted-foreground">Total Raised</div>
               </div>
               <div className="text-center space-y-2">
-                <div className="text-3xl md:text-4xl font-bold text-primary">99%</div>
+                <div className="text-3xl md:text-4xl font-bold text-primary">---</div>
                 <div className="text-sm text-muted-foreground">Happy Contributors</div>
               </div>
             </div>
