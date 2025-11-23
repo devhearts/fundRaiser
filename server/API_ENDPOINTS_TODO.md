@@ -124,6 +124,7 @@ This document contains all the API endpoints that need to be implemented for the
 
 ### Health & Status
 - [x] `GET /api/health` - Health check *(Already implemented)*
+- [x] `GET /api/init` - Initialize services (Google Sheets) *(Already implemented - with auto-initialization on startup and lazy initialization in service methods)*
 - [ ] `GET /api/status` - System status
 - [ ] `GET /api/version` - API version
 
@@ -173,8 +174,8 @@ This document contains all the API endpoints that need to be implemented for the
 ## 📈 Progress Tracking
 
 ### Overall Progress
-- **Total Endpoints**: 80
-- **Completed**: 34 (43%)
+- **Total Endpoints**: 81
+- **Completed**: 35 (43%)
 - **Remaining**: 46 (57%)
 
 ### By Category Progress
@@ -192,7 +193,7 @@ This document contains all the API endpoints that need to be implemented for the
 - **Notifications**: 0/8 (0%)
 - **Security & Logging**: 0/5 (0%)
 - **Analytics**: 0/10 (0%)
-- **System & Utility**: 1/8 (13%)
+- **System & Utility**: 2/9 (22%)
 - **Mobile Money**: 0/4 (0%)
 - **Content Management**: 0/4 (0%)
 - **Admin & Moderation**: 0/8 (0%)
@@ -227,6 +228,7 @@ This document contains all the API endpoints that need to be implemented for the
 - Consider implementing rate limiting for public endpoints
 - Ensure all endpoints follow RESTful conventions
 - Add proper authentication middleware where required
+- **Service Initialization**: Google Sheets service now has automatic initialization on startup and lazy initialization in all service methods, ensuring the service is always available without UI dependency
 
 ---
 

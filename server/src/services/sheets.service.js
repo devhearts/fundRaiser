@@ -21,20 +21,34 @@ class GoogleSheetsService {
     return this.sheets !== null;
   }
 
+  // Ensure service is initialized (lazy initialization)
+  async ensureInitialized() {
+    if (!this.sheets) {
+      logger.info('Service not initialized, attempting lazy initialization...');
+      try {
+        await this.initialize();
+        logger.info('✅ Lazy initialization successful');
+      } catch (error) {
+        logger.error('❌ Lazy initialization failed:', error.message);
+        throw new Error(`Google Sheets service not initialized and failed to initialize: ${error.message}`);
+      }
+    }
+  }
+
+  // Ensure spreadsheet ID is configured
+  ensureSpreadsheetId() {
+    if (!this.spreadsheetId) {
+      logger.error('Spreadsheet ID not configured');
+      throw new Error('Spreadsheet ID not configured');
+    }
+  }
+
   // Generic method to get all rows from a sheet
   async getAllRows(sheetName) {
     try {
-      // Check if sheets service is initialized
-      if (!this.sheets) {
-        logger.error('Google Sheets service not initialized');
-        throw new Error('Google Sheets service not initialized. Please ensure the service is properly set up.');
-      }
-
-      // Check if spreadsheet ID is set
-      if (!this.spreadsheetId) {
-        logger.error('Spreadsheet ID not configured');
-        throw new Error('Spreadsheet ID not configured');
-      }
+      // Ensure service is initialized (lazy initialization)
+      await this.ensureInitialized();
+      this.ensureSpreadsheetId();
 
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
@@ -92,17 +106,9 @@ class GoogleSheetsService {
   // Generic method to add a row to a sheet
   async addRow(sheetName, data) {
     try {
-      // Check if sheets service is initialized
-      if (!this.sheets) {
-        logger.error('Google Sheets service not initialized');
-        throw new Error('Google Sheets service not initialized. Please ensure the service is properly set up.');
-      }
-
-      // Check if spreadsheet ID is set
-      if (!this.spreadsheetId) {
-        logger.error('Spreadsheet ID not configured');
-        throw new Error('Spreadsheet ID not configured');
-      }
+      // Ensure service is initialized (lazy initialization)
+      await this.ensureInitialized();
+      this.ensureSpreadsheetId();
 
       let headers;
 
@@ -219,6 +225,11 @@ class GoogleSheetsService {
   // Generic method to delete a row from a sheet
   async deleteRow(sheetName, id) {
     try {
+      // Ensure service is initialized (lazy initialization)
+      // Note: getAllRows() also ensures initialization, but we ensure it here
+      // before direct this.sheets access for safety
+      await this.ensureInitialized();
+      
       const rows = await this.getAllRows(sheetName);
       const rowIndex = rows.findIndex(row => row.id === id);
 
@@ -256,6 +267,10 @@ class GoogleSheetsService {
   // Helper method to get sheet ID
   async getSheetId(sheetName) {
     try {
+      // Ensure service is initialized (lazy initialization)
+      await this.ensureInitialized();
+      this.ensureSpreadsheetId();
+      
       const response = await this.sheets.spreadsheets.get({
         spreadsheetId: this.spreadsheetId
       });
