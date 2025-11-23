@@ -40,7 +40,11 @@ router.post('/contributions/verify-phone', validate(verifyPhoneSchema), contribu
 router.get('/events/:eventId/contributions', optionalAuth, phoneAuth, contributionController.getContributionsByEventId);
 router.post('/events/:eventId/contributions', validate(createContributionSchema), contributionController.createContribution);
 router.post('/events/:eventId/pledges', validate(createPledgeSchema), contributionController.createPledge); // Public endpoint - no authentication required
+// More specific routes must come before general :id routes
+router.get('/contributions/user/:phone', contributionController.getContributionsByUserPhone);
+router.get('/contributions/:id', contributionController.getContributionById);
 router.put('/contributions/:id', validate(updateContributionSchema), contributionController.updateContribution);
+router.post('/contributions/:id/reminder', auth, contributionController.sendContributionReminder);
 
 // Event Update routes
 router.get('/events/:id/updates', eventUpdateController.getEventUpdates);

@@ -9,11 +9,11 @@ This document contains all the API endpoints that need to be implemented for the
 - [x] `POST /api/auth/login` - User login
 - [x] `POST /api/auth/logout` - User logout
 - [x] `POST /api/auth/invalidate-all-sessions` - Invalidate all sessions
-- [ ] `POST /api/auth/refresh` - Refresh JWT token
-- [ ] `POST /api/auth/forgot-password` - Request password reset
-- [ ] `POST /api/auth/reset-password` - Reset password with token
-- [ ] `POST /api/auth/verify-email` - Verify email address
-- [ ] `POST /api/auth/resend-verification` - Resend verification email
+- [x] `POST /api/auth/refresh` - Refresh JWT token *(Already implemented)*
+- [x] `POST /api/auth/forgot-password` - Request password reset *(Already implemented)*
+- [x] `POST /api/auth/reset-password` - Reset password with token *(Already implemented)*
+- [x] `POST /api/auth/verify-email` - Verify email address *(Already implemented)*
+- [x] `POST /api/auth/resend-verification` - Resend verification email *(Already implemented)*
 
 ### User Profile Management
 - [x] `GET /api/users/profile` - Get current user profile
@@ -52,6 +52,7 @@ This document contains all the API endpoints that need to be implemented for the
 - [x] `POST /api/events/:eventId/contributions` - Create contribution *(Already implemented)*
 - [x] `POST /api/events/:eventId/pledges` - Create pledge *(Deprecated - use contributions endpoint instead, kept for backward compatibility. All data stored in Contributions sheet - Pledges sheet has been removed)*
 - [x] `PUT /api/contributions/:id` - Update contribution status *(Already implemented)*
+- [x] `POST /api/contributions/verify-phone` - Verify phone and generate JWT token for viewing contributions *(Already implemented - generates 5-minute phone verification token)*
 - [ ] `GET /api/contributions/:id` - Get specific contribution
 - [ ] `GET /api/contributions/user/:phone` - Get user's contributions by phone
 - [ ] `POST /api/contributions/:id/reminder` - Send reminder for unpaid contribution
@@ -172,20 +173,20 @@ This document contains all the API endpoints that need to be implemented for the
 ## 📈 Progress Tracking
 
 ### Overall Progress
-- **Total Endpoints**: 79
-- **Completed**: 25 (32%)
-- **Remaining**: 54 (68%)
+- **Total Endpoints**: 80
+- **Completed**: 31 (39%)
+- **Remaining**: 49 (61%)
 
 ### By Category Progress
-- **Authentication & Users**: 6/17 (35%)
-  - User Registration & Authentication: 4/8 (50%)
+- **Authentication & Users**: 11/17 (65%)
+  - User Registration & Authentication: 9/9 (100%)
   - User Profile Management: 2/5 (40%)
   - User Administration: 0/4 (0%)
 - **Events**: 10/10 (100%)
   - Event CRUD Operations: 6/6 (100%)
   - Event Updates & Announcements: 4/4 (100%)
-- **Contributions & Payments**: 8/11 (73%)
-  - Contribution Management: 4/7 (57%)
+- **Contributions & Payments**: 9/12 (75%)
+  - Contribution Management: 5/8 (63%)
   - Payment Processing: 4/4 (100%)
 - **Payment Methods**: 0/6 (0%)
 - **Notifications**: 0/8 (0%)

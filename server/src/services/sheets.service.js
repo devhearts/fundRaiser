@@ -310,6 +310,16 @@ class GoogleSheetsService {
     return contributions.filter(contribution => contribution.donorPhone === phone);
   }
 
+  async getContributionsByPhone(phone) {
+    const contributions = await this.getAllContributions();
+    const normalizePhone = (value = '') => (value || '').replace(/\s+/g, '');
+    const sanitizedPhone = normalizePhone(phone);
+    return contributions.filter(contribution => {
+      if (!contribution.donorPhone) return false;
+      return normalizePhone(contribution.donorPhone) === sanitizedPhone;
+    });
+  }
+
   async createContribution(contributionData) {
     return await this.addRow(sheetsConfig.sheets.contributions, contributionData);
   }

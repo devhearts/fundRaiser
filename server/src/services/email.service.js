@@ -89,6 +89,25 @@ class EmailService {
     
     return await this.sendEmail(email, subject, text, html);
   }
+
+  async sendContributionReminder(donorEmail, donorName, amount, eventTitle, reminderLink, pledgeDate) {
+    const subject = `Reminder: Complete Your Contribution to ${eventTitle}`;
+    const pledgeDateStr = pledgeDate ? new Date(pledgeDate).toLocaleDateString() : 'soon';
+    const html = `
+      <h2>Friendly Reminder</h2>
+      <p>Hi ${donorName},</p>
+      <p>This is a friendly reminder about your pending contribution of <strong>UGX ${amount.toLocaleString()}</strong> to "${eventTitle}".</p>
+      <p>Your pledge date was: ${pledgeDateStr}</p>
+      <p>You can complete your contribution by clicking the link below:</p>
+      <p><a href="${reminderLink}">Complete Contribution</a></p>
+      <p>Or copy and paste this link into your browser:</p>
+      <p>${reminderLink}</p>
+      <p>Thank you for your support!</p>
+    `;
+    const text = `Hi ${donorName}, this is a reminder about your pending contribution of UGX ${amount.toLocaleString()} to "${eventTitle}". Complete it here: ${reminderLink}`;
+    
+    return await this.sendEmail(donorEmail, subject, text, html);
+  }
 }
 
 module.exports = new EmailService();

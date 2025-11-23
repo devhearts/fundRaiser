@@ -3,6 +3,62 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const config = require('../config/config');
 const logger = require('../utils/logger');
+const emailService = require('../services/email.service');
+const { normalizeEmail } = require('../utils/email.utils');
+
+// Import computeEventCurrentAmounts from event controller
+// Note: This is a shared utility function for computing event amounts from payments
+const computeEventCurrentAmounts = async (eventIds = []) => {
+  try {
+    const eventIdSet = eventIds.length ? new Set(eventIds) : null;
+    const [allContributions, allPayments] = await Promise.all([
+      db.getContributions(),
+      db.getPayments()
+    ]);
+
+    const contributionToEvent = new Map();
+    const totals = new Map();
+
+    allContributions.forEach(contribution => {
+      if (!eventIdSet || eventIdSet.has(contribution.eventId)) {
+        contributionToEvent.set(contribution.id, contribution.eventId);
+        if (!totals.has(contribution.eventId)) {
+          totals.set(contribution.eventId, 0);
+        }
+      }
+    });
+
+    if (eventIdSet) {
+      eventIds.forEach(id => {
+        if (!totals.has(id)) {
+          totals.set(id, 0);
+        }
+      });
+    }
+
+    allPayments
+      .filter(payment => payment.status === 'completed')
+      .forEach(payment => {
+        const fulfilledList = Array.isArray(payment.fulfilledContributions) && payment.fulfilledContributions.length > 0
+          ? payment.fulfilledContributions
+          : [{ contributionId: payment.contributionId, amount: payment.amount }];
+
+        fulfilledList.forEach(fulfilled => {
+          const eventId = contributionToEvent.get(fulfilled.contributionId);
+          if (!eventId) return;
+          if (eventIdSet && !eventIdSet.has(eventId)) return;
+
+          const amount = parseFloat(fulfilled.amount) || 0;
+          totals.set(eventId, (totals.get(eventId) || 0) + amount);
+        });
+      });
+
+    return totals;
+  } catch (error) {
+    logger.error('Failed to compute event current amounts:', error.message);
+    return new Map();
+  }
+};
 
 // Verify phone and generate JWT token (5 minute expiry)
 // This creates a temporary session for viewing contributions
@@ -206,10 +262,167 @@ const updateContribution = async (req, res) => {
   }
 };
 
+// Get specific contribution by ID
+const getContributionById = async (req, res) => {
+  try {
+    const contributionId = req.params.id;
+    const contribution = await db.findContributionById(contributionId);
+
+    if (!contribution) {
+      return res.status(404).json({ error: 'Contribution not found' });
+    }
+
+    // Get the associated event for additional context
+    const event = await db.findEventById(contribution.eventId);
+    
+    // Compute current amount for the event
+    let currentAmount = 0;
+    if (event) {
+      const currentAmounts = await computeEventCurrentAmounts([event.id]);
+      currentAmount = currentAmounts.get(event.id) || 0;
+    }
+    
+    res.json({
+      ...contribution,
+      event: event ? {
+        id: event.id,
+        title: event.title,
+        organizerName: event.organizerName,
+        goalAmount: event.goalAmount,
+        currentAmount
+      } : null
+    });
+  } catch (error) {
+    logger.error('Failed to fetch contribution:', error);
+    res.status(500).json({ error: 'Failed to fetch contribution' });
+  }
+};
+
+// Get user's contributions by phone number
+const getContributionsByUserPhone = async (req, res) => {
+  try {
+    const phone = req.params.phone;
+    
+    if (!phone) {
+      return res.status(400).json({ error: 'Phone number is required' });
+    }
+
+    // Normalize phone number (remove spaces)
+    const normalizePhone = (value = '') => (value || '').replace(/\s+/g, '');
+    const sanitizedPhone = normalizePhone(phone);
+
+    const contributions = await db.findContributionsByPhone(sanitizedPhone);
+
+    // Get unique event IDs to compute current amounts efficiently
+    const eventIds = [...new Set(contributions.map(c => c.eventId))];
+    const currentAmounts = await computeEventCurrentAmounts(eventIds);
+
+    // Enrich contributions with event information
+    const contributionsWithEvents = await Promise.all(
+      contributions.map(async (contribution) => {
+        const event = await db.findEventById(contribution.eventId);
+        return {
+          ...contribution,
+          event: event ? {
+            id: event.id,
+            title: event.title,
+            organizerName: event.organizerName,
+            goalAmount: event.goalAmount,
+            currentAmount: currentAmounts.get(event.id) || 0
+          } : null
+        };
+      })
+    );
+
+    res.json({
+      phone: sanitizedPhone,
+      totalContributions: contributionsWithEvents.length,
+      contributions: contributionsWithEvents
+    });
+  } catch (error) {
+    logger.error('Failed to fetch contributions by phone:', error);
+    res.status(500).json({ error: 'Failed to fetch contributions' });
+  }
+};
+
+// Send reminder for unpaid contribution
+const sendContributionReminder = async (req, res) => {
+  try {
+    const contributionId = req.params.id;
+    const contribution = await db.findContributionById(contributionId);
+
+    if (!contribution) {
+      return res.status(404).json({ error: 'Contribution not found' });
+    }
+
+    // Check if contribution is already paid
+    if (contribution.status === 'completed' || contribution.status === 'paid') {
+      return res.status(400).json({
+        error: 'Contribution already paid',
+        message: 'This contribution has already been paid. No reminder needed.'
+      });
+    }
+
+    // Get the associated event
+    const event = await db.findEventById(contribution.eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    // Check if user is the event organizer (authorization)
+    const user = req.user || null;
+    const userEmailNormalized = user?.email ? normalizeEmail(user.email) : null;
+    const eventEmailNormalized = event.organizerEmail ? normalizeEmail(event.organizerEmail) : null;
+    const isOrganizer = !!user && 
+      ((userEmailNormalized && eventEmailNormalized && userEmailNormalized === eventEmailNormalized) ||
+       (user.id && event.organizerId && user.id === event.organizerId));
+
+    if (!isOrganizer) {
+      return res.status(403).json({
+        error: 'Access denied',
+        message: 'Only the event organizer can send reminders for contributions'
+      });
+    }
+
+    // Send reminder email if donor email is available
+    let emailSent = false;
+    if (contribution.donorEmail) {
+      const reminderLink = `${config.frontendUrl || 'http://localhost:5173'}/event/${event.id}`;
+      emailSent = await emailService.sendContributionReminder(
+        contribution.donorEmail,
+        contribution.donorName,
+        contribution.amount,
+        event.title,
+        reminderLink,
+        contribution.pledgeDate
+      );
+    }
+
+    logger.info(`Reminder sent for contribution ${contributionId} to ${contribution.donorPhone}${contribution.donorEmail ? ` (${contribution.donorEmail})` : ''}`);
+
+    res.json({
+      message: 'Reminder sent successfully',
+      contributionId: contribution.id,
+      donorPhone: contribution.donorPhone,
+      donorEmail: contribution.donorEmail || null,
+      emailSent,
+      note: contribution.donorEmail 
+        ? 'Reminder email sent to donor' 
+        : 'No email address available. Please contact the donor directly.'
+    });
+  } catch (error) {
+    logger.error('Failed to send reminder:', error);
+    res.status(500).json({ error: 'Failed to send reminder' });
+  }
+};
+
 module.exports = {
   verifyPhone,
   getContributionsByEventId,
   createContribution,
   createPledge,
-  updateContribution
+  updateContribution,
+  getContributionById,
+  getContributionsByUserPhone,
+  sendContributionReminder
 };
