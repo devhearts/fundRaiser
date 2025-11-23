@@ -53,9 +53,9 @@ This document contains all the API endpoints that need to be implemented for the
 - [x] `POST /api/events/:eventId/pledges` - Create pledge *(Deprecated - use contributions endpoint instead, kept for backward compatibility. All data stored in Contributions sheet - Pledges sheet has been removed)*
 - [x] `PUT /api/contributions/:id` - Update contribution status *(Already implemented)*
 - [x] `POST /api/contributions/verify-phone` - Verify phone and generate JWT token for viewing contributions *(Already implemented - generates 5-minute phone verification token)*
-- [ ] `GET /api/contributions/:id` - Get specific contribution
-- [ ] `GET /api/contributions/user/:phone` - Get user's contributions by phone
-- [ ] `POST /api/contributions/:id/reminder` - Send reminder for unpaid contribution
+- [x] `GET /api/contributions/:id` - Get specific contribution *(Just implemented - includes event context with computed currentAmount)*
+- [x] `GET /api/contributions/user/:phone` - Get user's contributions by phone *(Just implemented - returns all contributions across events with event details)*
+- [x] `POST /api/contributions/:id/reminder` - Send reminder for unpaid contribution *(Just implemented - organizer only, sends email if available)*
 
 ### Payment Processing
 - [x] `POST /api/payments/process` - Process payment *(Supports direct payments with eventId using FIFO allocation, partial payments, excess handling, auto-creates contributions for excess; supports direct contribution payment when contributionId provided)*
@@ -174,8 +174,8 @@ This document contains all the API endpoints that need to be implemented for the
 
 ### Overall Progress
 - **Total Endpoints**: 80
-- **Completed**: 31 (39%)
-- **Remaining**: 49 (61%)
+- **Completed**: 34 (43%)
+- **Remaining**: 46 (57%)
 
 ### By Category Progress
 - **Authentication & Users**: 11/17 (65%)
@@ -185,8 +185,8 @@ This document contains all the API endpoints that need to be implemented for the
 - **Events**: 10/10 (100%)
   - Event CRUD Operations: 6/6 (100%)
   - Event Updates & Announcements: 4/4 (100%)
-- **Contributions & Payments**: 9/12 (75%)
-  - Contribution Management: 5/8 (63%)
+- **Contributions & Payments**: 12/12 (100%)
+  - Contribution Management: 8/8 (100%)
   - Payment Processing: 4/4 (100%)
 - **Payment Methods**: 0/6 (0%)
 - **Notifications**: 0/8 (0%)
