@@ -196,6 +196,15 @@ const findContributionsByPhoneAndEvent = async (phone, eventId) => {
   }
 };
 
+const findContributionsByPhone = async (phone) => {
+  try {
+    return await sheetsService.getContributionsByPhone(phone);
+  } catch (error) {
+    logger.error('Failed to find contributions by phone:', error.message);
+    return [];
+  }
+};
+
 const findPaymentsByPhoneAndEvent = async (phone, eventId) => {
   try {
     return await sheetsService.getPaymentsByPhoneAndEvent(phone, eventId);
@@ -247,6 +256,7 @@ module.exports = {
   findContributionById,
   findContributionsByEventId,
   findContributionsByPhoneAndEvent,
+  findContributionsByPhone,
   getEventUpdatesByEventId,
   getEventUpdateById,
   addEventUpdate,
